@@ -2,7 +2,7 @@ import math
 import numpy as np
 import scipy.integrate
 
-from general import R, n, secondary_electron_contribution_array
+from general import R, n, secondary_electron_contribution_array, energy_conv_to_func, n_vectorized, energy_conv_to_array
 from spectral_functions import A_BCS, A_BCS_2
 
 
@@ -24,7 +24,21 @@ def energy_conv_integrand(integration_w, fixed_w, T, dk, a, c, fixed_k, energy_c
         integration_w, temp)
 
 
-def spectrum_slice_array_SEC(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp):
+def extend_array(array, one_side_extension):
+    """
+    Extends an array with constant step size by one_side_extension on both sides
+    :param array: must have length of at least 2
+    :param one_side_extension: how many indexes to extend array by
+    :return:
+    """
+    array_size = array.size
+    assert array_size >= 2
+    step_size = array[1] - array[0]
+    a = np.arange(array[0] - one_side_extension * step_size, array[0], step_size)
+    b = np.arange(array[array_size - 1] + step_size, array[array_size - 1] + (one_side_extension + 1) * step_size, step_size)
+    return np.concatenate((a, array, b))
+
+def spectrum_slice_array_SEC(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
     """
     EDC slice function with secondary electron contribution
     :param w_array: energy array
@@ -42,10 +56,17 @@ def spectrum_slice_array_SEC(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, e
     :param temp:
     :return:
     """
-    return_array = np.zeros(w_array.size)
-    for i in range(w_array.size):
-        return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
-            w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
+    if convolution_extension is None:
+        convolution_extension = int(energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5) # between 96% and 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + w_array.size]
+
+    # return_array = np.zeros(w_array.size)
+    # for i in range(w_array.size):
+    #     return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
+    #         w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
+
     # add in secondary electrons
     secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
     for i in range(w_array.size):
@@ -53,7 +74,7 @@ def spectrum_slice_array_SEC(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, e
     return return_array
 
 
-def spectrum_slice_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp):
+def spectrum_slice_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
     """
     EDC slice function
     :param w_array: energy array
@@ -67,10 +88,15 @@ def spectrum_slice_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma
     :param temp:
     :return:
     """
-    return_array = np.zeros(w_array.size)
-    for i in range(w_array.size):
-        return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
-            w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
+    if convolution_extension is None:
+        convolution_extension = int(energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5) # between 96% and 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + w_array.size]
+    # return_array = np.zeros(w_array.size)
+    # for i in range(w_array.size):
+    #     return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
+    #         w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
     return return_array
 
 

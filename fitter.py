@@ -82,37 +82,62 @@ class Fitter:
             else:
                 self.index_to_fit = [*range(a, b, EDC_density)] + [*range(c, d, EDC_density)]
 
-    def fit(self, scale_values, T_values, secondary_electron_scale_values, plot_results=True):
+    def fit(self, scale_values, T_values, secondary_electron_scale_values, plot_results=True, hasty_fit=False):
+        should_vary = not hasty_fit
         # Add parameters
         pars = lmfit.Parameters()
         for i in range(len(scale_values)):
             if scale_values[i] >= 0:
-                pars.add('scale_' + str(i), value=scale_values[i], min=scale_values[i] / 10, max=scale_values[i] * 10,
-                         vary=True)
+                pars.add('scale_' + str(i), value=scale_values[i],
+                         # min=scale_values[i] / 1000, max=scale_values[i] * 1000,
+                         vary=should_vary)
             else:
-                pars.add('scale_' + str(i), value=scale_values[i], min=scale_values[i] * 10, max=scale_values[i] / 10,
-                         vary=True)
+                pars.add('scale_' + str(i), value=scale_values[i],
+                         # min=scale_values[i] * 1000, max=scale_values[i] / 1000,
+                         vary=should_vary)
         for i in range(len(T_values)):
             if T_values[i] >= 0:
-                pars.add('T_' + str(i), value=T_values[i], min=T_values[i] / 10, max=T_values[i] * 10, vary=True)
+                pars.add('T_' + str(i), value=T_values[i],
+                         # min=T_values[i] / 1000, max=T_values[i] * 1000,
+                         vary=should_vary)
             else:
-                pars.add('T_' + str(i), value=T_values[i], min=T_values[i] * 10, max=T_values[i] / 10, vary=True)
+                pars.add('T_' + str(i), value=T_values[i],
+                         # min=T_values[i] * 1000, max=T_values[i] / 1000,
+                         vary=should_vary)
         for i in range(len(secondary_electron_scale_values)):
             if secondary_electron_scale_values[i] >= 0:
                 pars.add('secondary_electron_scale_' + str(i), value=secondary_electron_scale_values[i],
-                         min=secondary_electron_scale_values[i] / 10, max=secondary_electron_scale_values[i] * 10,
-                         vary=True)
+                         # min=secondary_electron_scale_values[i] / 1000, max=secondary_electron_scale_values[i] * 1000,
+                         vary=should_vary)
             else:
                 pars.add('secondary_electron_scale_' + str(i), value=secondary_electron_scale_values[i],
-                         min=secondary_electron_scale_values[i] * 10, max=secondary_electron_scale_values[i] / 10,
-                         vary=True)
-        pars.add('dk', value=15, min=0, max=75)
-        pars.add('p', value=1, min=0)
-        pars.add('q', value=-1, max=0)
-        pars.add('r', value=1, min=0)
-        pars.add('s', value=0)
-        pars.add('a', value=self.a_estimate, min=0, max=self.a_estimate * 3)
-        pars.add('c', value=self.c_estimate, min=self.c_estimate * 3, max=0)
+                         # min=secondary_electron_scale_values[i] * 1000, max=secondary_electron_scale_values[i] / 1000,
+                         vary=should_vary)
+        pars.add('dk', value=11.0889175, min=9, max=20, vary=True)
+        pars.add('p', value=0.85119948, min=0, vary=True)
+        pars.add('q', value=-7.14782080, max=0, vary=True)
+        pars.add('r', value=0.40394895, min=0, vary=True)
+        pars.add('s', value=280.583806, vary=True)
+        pars.add('a', value=2521.88920, min=1800, max=2800, vary=True)
+        pars.add('c', value=-22.4344138, min=-40, max=-10, vary=True)
+
+
+        '''
+        dk = 12.2697679
+            p = 0.69633598
+            q = -7.17564001
+            r = 0.63680968
+            s = 397.478332
+            a = 2200.00003
+            c = -22.1996717
+            '''
+        # pars.add('dk', value=15, min=0, max=75)
+        # pars.add('p', value=1, min=0)
+        # pars.add('q', value=-1, max=0)
+        # pars.add('r', value=1, min=0)
+        # pars.add('s', value=0)
+        # pars.add('a', value=self.a_estimate, min=0, max=self.a_estimate * 3)
+        # pars.add('c', value=self.c_estimate, min=self.c_estimate * 3, max=0)
 
         # Prepare EDCs to fit
         EDC_func_array = []
@@ -338,13 +363,21 @@ class Fitter:
             local_T = T_polynomial(self.k[i], *T_values)
             local_secondary_electron_scale = secondary_electron_scale_polynomial(self.k[i],
                                                                                  *secondary_electron_scale_values)
-            dk = 11.5042512 # 0.11616861e+02  # 15.7193965
-            p = 1.95276927 # 1.05881374  # 0.10047314
-            q = -7.73249535 # -0.77553310e+01  # -7.13989334
-            r = 0.45174549 # 0.45410424  # 3.46865626
-            s = 244.609464 # 69.4525201  # -3.35522709
-            a = 2562.94584 # 0.26037032e+04  # 2338.17857
-            c = -22.2660626 # -0.22246008e+02  # -18.7353912
+            dk = 11.5042512
+            p = 1.95276927
+            q = -7.73249535
+            r = 0.45174549
+            s = 244.609464
+            a = 2562.94584
+            c = -22.2660626
+
+            # pars.add('dk', value=13.4053628, min=9, max=20, vary=True)
+            # pars.add('p', value=0.77104774, min=0, vary=True)
+            # pars.add('q', value=-7.66332536, max=0, vary=True)
+            # pars.add('r', value=0.42683666, min=0, vary=True)
+            # pars.add('s', value=218.479665, vary=True)
+            # pars.add('a', value=2533.27484, min=2200, max=2800, vary=True)
+            # pars.add('c', value=-21.0412564, min=-40, max=-10, vary=True)
 
             EDC = spectrum_slice_array_SEC(self.w, local_scale, local_T, dk, local_secondary_electron_scale * p, q, r,
                                            s, a, c, self.k[i], self.energy_conv_sigma, self.temp)

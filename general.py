@@ -23,7 +23,7 @@ def R(dw, sigma):
     :return: a float representing convolution factor
     """
     try:
-        return (1 / sigma / math.sqrt(2 * math.pi)) * math.exp(-0.5 * dw ** 2 / sigma ** 2)
+        return (1 / sigma / math.sqrt(2 * math.pi)) * np.exp(-0.5 * dw ** 2 / sigma ** 2)
     except OverflowError:
         return 0
 
@@ -55,16 +55,16 @@ def energy_conv_map(k, w, spectrum, energy_conv_sigma, scale):
             # 1D array of w at point (i, j) (in numpy coordinates); w is used to find dw
             curr_w = np.full(inv_w[j].size, w[i][j])
             # Energy convolution to find final intensity at point (i, j)
-            res = np.convolve(scale * spectrum(inv_k[j], inv_w[j]),
-                              R(rev_inv_w[j] - curr_w, energy_conv_sigma), mode='valid')
+            res = np.convolve(
+                              R(rev_inv_w[j] - curr_w, energy_conv_sigma), scale * spectrum(inv_k[j], inv_w[j]), mode='valid')
             results[i][j] = res
 
     return results
 
 
-def energy_conv(w, spectral_slice, energy_conv_sigma):
+def energy_conv_to_func(w, spectral_slice, energy_conv_sigma):
     """
-    Energy Convolution to an array
+    Energy Convolution with a function
     :param w: energy array
     :param spectral_slice: function (w) representing array
     :param energy_conv_sigma: energy resolution (sigma not FWHM)
@@ -78,6 +78,26 @@ def energy_conv(w, spectral_slice, energy_conv_sigma):
     for i in range(w.size):
         curr_w = np.full(w.size, w[i])
         res = np.convolve(spectral_slice(w), R(rev_w - curr_w, energy_conv_sigma), mode='valid')
+        results[i] = res
+
+    return results
+
+def energy_conv_to_array(w, spectral_slice, energy_conv_sigma):
+    """
+    Energy Convolution to an array
+    :param w: energy array
+    :param spectral_slice: array to be convolved
+    :param energy_conv_sigma: energy resolution (sigma not FWHM)
+    :return: convoluted array
+    """
+    results = np.zeros(w.size)
+
+    # Flip vertically to convolve properly
+    rev_w = np.flip(w)
+
+    for i in range(w.size):
+        curr_w = np.full(w.size, w[i])
+        res = np.convolve(spectral_slice, R(rev_w - curr_w, energy_conv_sigma), mode='valid')
         results[i] = res
 
     return results
@@ -108,7 +128,7 @@ def n(w, temp):
     kB = 8.617333262 * 10 ** (-2)
     uP = 0
     # h-bar: 6.582 * 10 ** (-13) (mev*s) # (Implicit bc already expressing energy)
-    if (w - uP) / kB / temp > 100:
+    if ((w - uP) / kB / temp) > 100:
         return 0  # Rounding approximation
     if (w - uP) / kB / temp < -100:
         return 1

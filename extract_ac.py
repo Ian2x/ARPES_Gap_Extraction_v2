@@ -22,7 +22,7 @@ def extract_ac(Z, k, w, show_results=False):
     params, pcov = scipy.optimize.curve_fit(
         lorentz_form_with_secondary_electrons, w, inv_Z[0], bounds=(
             [0, -70, 0, 500, -70, 0, 0],
-            [np.inf, 0, np.inf, 700, 0, 0.5, 100]))
+            [np.inf, 0, np.inf, 700, 0, 0.5, 100]), maxfev=2000)
 
     last_a, last_b, last_c, last_p, last_q, last_r, last_s = params
 
@@ -30,7 +30,7 @@ def extract_ac(Z, k, w, show_results=False):
 
     for i in range(1, z_width):  # width
         params, pcov = scipy.optimize.curve_fit(lorentz_form_with_secondary_electrons, w, inv_Z[i], p0=(
-              last_a, last_b, last_c, last_p, last_q, last_r, last_s), maxfev=1000)
+              last_a, last_b, last_c, last_p, last_q, last_r, last_s), maxfev=2000)
         last_a, last_b, last_c, last_p, last_q, last_r, last_s = params
         super_state_trajectory[i] = last_b
 
