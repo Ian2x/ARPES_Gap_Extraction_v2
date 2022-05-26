@@ -5,13 +5,15 @@ import scipy.optimize
 from general import lorentz_form_with_secondary_electrons
 
 
-def extract_ac(Z, k, w, show_results=False):
+def extract_ac(Z, k, w, show_results=False, fix_k=True):
     """
-    Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k
+    Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
+    there a k-offset is detected
     :param Z:
     :param k:
     :param w:
     :param show_results:
+    :param fix_k: Adjust k if a k-offset is detected
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
     """
     inv_Z = np.array([list(i) for i in zip(*Z)])
@@ -43,7 +45,8 @@ def extract_ac(Z, k, w, show_results=False):
                                                                                         [0, -np.inf, 0, -0.02],
                                                                                         [np.inf, 0, np.inf, 0.02]))
     initial_a_estimate, initial_c_estimate, initial_dk_estimate, k_error = params
-    k = k - k_error
+    if fix_k:
+        k = k - k_error
     initial_kf_estimate = (-initial_c_estimate / initial_a_estimate) ** 0.5
 
     if show_results:

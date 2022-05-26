@@ -62,26 +62,6 @@ def energy_conv_map(k, w, spectrum, energy_conv_sigma, scale):
     return results
 
 
-def energy_conv_to_func(w, spectral_slice, energy_conv_sigma):
-    """
-    Energy Convolution with a function
-    :param w: energy array
-    :param spectral_slice: function (w) representing array
-    :param energy_conv_sigma: energy resolution (sigma not FWHM)
-    :return: convoluted array
-    """
-    results = np.zeros(w.size)
-
-    # Flip vertically to convolve properly
-    rev_w = np.flip(w)
-
-    for i in range(w.size):
-        curr_w = np.full(w.size, w[i])
-        res = np.convolve(spectral_slice(w), R(rev_w - curr_w, energy_conv_sigma), mode='valid')
-        results[i] = res
-
-    return results
-
 def energy_conv_to_array(w, spectral_slice, energy_conv_sigma):
     """
     Energy Convolution to an array
@@ -148,10 +128,10 @@ def secondary_electron_contribution_array(w_array, p, q, r, s):
     :param s: vertical shift
     :return:
     """
-    return_array = np.zeros(w_array.size)
+    return_array = np.zeros(len(w_array))
 
     # p is scale-up factor (0, inf), q is horizontal shift (-inf, inf), r is steepness (-inf, 0]
-    for i in range(w_array.size):
+    for i in range(len(w_array)):
         if r * w_array[i] - r * q > 100:
             return_array[i] = s
         else:
@@ -327,3 +307,19 @@ def plot_map(Z, x, y):
 
 def rss(arr1, arr2):
     return np.sum(np.square(arr1 - arr2))
+
+
+def extend_array(array, one_side_extension):
+    """
+    Extends an array with constant step size by one_side_extension on both sides
+    :param array: must have length of at least 2
+    :param one_side_extension: how many indexes to extend array by
+    :return:
+    """
+    array_size = len(array)
+    assert array_size >= 2
+    step_size = array[1] - array[0]
+    a = np.arange(array[0] - one_side_extension * step_size, array[0], step_size)
+    b = np.arange(array[array_size - 1] + step_size, array[array_size - 1] + (one_side_extension + 1) * step_size,
+                  step_size)
+    return np.concatenate((a, array, b))

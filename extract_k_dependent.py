@@ -4,7 +4,7 @@ import numpy as np
 import scipy.optimize
 import scipy.stats
 
-from extraction_functions import EDC_prep, spectrum_slice_array
+from extraction_functions import EDC_prep, EDC_array
 from general import ONE_BILLION, d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial, \
     d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial, d10_polynomial, F_test
 
@@ -49,7 +49,7 @@ class KDependentExtractor:
                 EDC_prep(i, self.Z, self.w, self.min_fit_count, exclude_secondary=False)
 
             params, pcov = scipy.optimize.curve_fit(
-                partial(spectrum_slice_array, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
+                partial(EDC_array, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
                         energy_conv_sigma=self.energy_conv_sigma, temp=self.temp), low_noise_w, low_noise_slice,
                 bounds=(
                     [0, 0, 0],
@@ -62,7 +62,7 @@ class KDependentExtractor:
             if self.show_detailed_results:
                 plt.plot(low_noise_w, low_noise_slice)
                 plt.plot(low_noise_w,
-                         spectrum_slice_array(
+                         EDC_array(
                              low_noise_w, *params, self.initial_a_estimate, self.initial_c_estimate, self.k[i],
                              self.energy_conv_sigma, self.temp))
                 plt.show()
@@ -82,6 +82,10 @@ class KDependentExtractor:
             print(T_trajectory_string)
 
     def get_secondary_electron_scale_trajectory(self, y_pos):
+        """
+        :param y_pos: index of MDC to fit secondary electron polynomial to
+        :return:
+        """
         if not (0 <= y_pos < self.w.size):
             raise ValueError("y_pos out of range of w")
         KDependentExtractor.secondary_electron_scale_trajectory = self.Z[y_pos]

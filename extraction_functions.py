@@ -1,80 +1,41 @@
-import math
 import numpy as np
-import scipy.integrate
 
-from general import R, n, secondary_electron_contribution_array, energy_conv_to_func, n_vectorized, energy_conv_to_array
+from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array
 from spectral_functions import A_BCS, A_BCS_2
 
 
-def energy_conv_integrand(integration_w, fixed_w, T, dk, a, c, fixed_k, energy_conv_sigma, temp):
-    """
-    Integrand of energy convolution integral
-    :param integration_w: w to integrate over
-    :param fixed_w: w to calculate convolution about
-    :param T:
-    :param dk:
-    :param a:
-    :param c:
-    :param fixed_k: momentum of EDC
-    :param energy_conv_sigma:
-    :param temp:
-    :return:
-    """
-    return A_BCS(fixed_k, integration_w, a, c, dk, T) * R(math.fabs(integration_w - fixed_w), energy_conv_sigma) * n(
-        integration_w, temp)
-
-
-def extend_array(array, one_side_extension):
-    """
-    Extends an array with constant step size by one_side_extension on both sides
-    :param array: must have length of at least 2
-    :param one_side_extension: how many indexes to extend array by
-    :return:
-    """
-    array_size = array.size
-    assert array_size >= 2
-    step_size = array[1] - array[0]
-    a = np.arange(array[0] - one_side_extension * step_size, array[0], step_size)
-    b = np.arange(array[array_size - 1] + step_size, array[array_size - 1] + (one_side_extension + 1) * step_size, step_size)
-    return np.concatenate((a, array, b))
-
-def spectrum_slice_array_SEC(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+                      convolution_extension=None, use_Norman=False, symmetrize=False):
     """
     EDC slice function with secondary electron contribution
     :param w_array: energy array
     :param scale: scaling factor
     :param T:
     :param dk:
-    :param p: SEC scale
-    :param q: SEC horizontal shift
-    :param r: SEC steepness
-    :param s: SEC vertical shift
+    :param p: SE scale
+    :param q: SE horizontal shift
+    :param r: SE steepness
+    :param s: SE vertical shift
     :param a:
     :param c:
     :param fixed_k: momentum of EDC
     :param energy_conv_sigma:
     :param temp:
+    :param convolution_extension:
+    :param use_Norman:
     :return:
     """
-    if convolution_extension is None:
-        convolution_extension = int(energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5) # between 96% and 99% ? maybe...
-    temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, np.multiply(A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
-    return_array = temp_array[convolution_extension:convolution_extension + w_array.size]
-
-    # return_array = np.zeros(w_array.size)
-    # for i in range(w_array.size):
-    #     return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
-    #         w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
-
+    return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
+                             convolution_extension=convolution_extension, use_Norman=use_Norman, symmetrize=symmetrize)
     # add in secondary electrons
     secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
-    for i in range(w_array.size):
+    for i in range(len(w_array)):
         return_array[i] = return_array[i] + secondary[i]
     return return_array
 
 
-def spectrum_slice_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None,
+              use_Norman=False, symmetrize=False):
     """
     EDC slice function
     :param w_array: energy array
@@ -86,42 +47,30 @@ def spectrum_slice_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma
     :param fixed_k: momentum of EDC
     :param energy_conv_sigma:
     :param temp:
+    :param convolution_extension:
+    :param use_Norman:
     :return:
     """
     if convolution_extension is None:
-        convolution_extension = int(energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5) # between 96% and 99% ? maybe...
+        convolution_extension = int(
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, np.multiply(A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
-    return_array = temp_array[convolution_extension:convolution_extension + w_array.size]
-    # return_array = np.zeros(w_array.size)
-    # for i in range(w_array.size):
-    #     return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand, w_array[i] - 250, w_array[i] + 250, args=(
-    #         w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
-    return return_array
-
-
-def energy_conv_integrand_2(integration_w, fixed_w, T, dk, a, c, fixed_k, energy_conv_sigma, temp):
-    return A_BCS_2(fixed_k, integration_w, a, c, dk, T) * R(math.fabs(integration_w - fixed_w), energy_conv_sigma) * n(
-        integration_w, temp)
-
-
-def spectrum_slice_array_SEC_2(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp):
-    return_array = np.zeros(w_array.size)
-    for i in range(w_array.size):
-        return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand_2, w_array[i] - 250, w_array[i] + 250, args=(
-            w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
-    # add in secondary electrons
-    secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
-    for i in range(w_array.size):
-        return_array[i] = return_array[i] + secondary[i]
-    return return_array
-
-
-def spectrum_slice_array_2(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp):
-    return_array = np.zeros(w_array.size)
-    for i in range(w_array.size):
-        return_array[i] = scale * scipy.integrate.quad(energy_conv_integrand_2, w_array[i] - 250, w_array[i] + 250, args=(
-            w_array[i], T, dk, a, c, fixed_k, energy_conv_sigma, temp))[0]
+    if use_Norman:
+        # Use A_BCS_2
+        if symmetrize:
+            # Don't include Fermi effect
+            temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+                A_BCS_2(fixed_k, temp_w_array, a, c, dk, T), scale), energy_conv_sigma)
+        else:
+            # Include Fermi effect
+            temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+                A_BCS_2(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
+                                              energy_conv_sigma)
+    else:
+        # Use A_BCS
+        temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+            A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
     return return_array
 
 
@@ -199,3 +148,40 @@ def EDC_prep(curr_index, Z, w, min_fit_count, exclude_secondary=True):
         if fitting_sigma[i] <= 0:
             fitting_sigma[i] = 1
     return low_noise_w, low_noise_slice, fitting_sigma, points_in_fit, fit_start_index, fit_end_index
+
+
+def symmetrize_EDC(axis_array, data_array, temp, ignore_w_above=-4):
+    """
+    Symmetrize an EDC by copying its values over w=0
+    Returns new axis_array and new data_array
+    :param axis_array: energy array
+    :param data_array: EDC
+    :param temp:
+    :param ignore_w_above: w values to ignore (because large Fermi effect)
+    :return:
+    """
+    # ignore small temp values
+    bad_indexes = []
+    for i in range(len(axis_array)):
+        if axis_array[i] > ignore_w_above:
+            bad_indexes.append(i)
+    bad_indexes.reverse()
+    for i in bad_indexes:
+        axis_array = np.delete(axis_array, i)
+        data_array = np.delete(data_array, i)
+    # remove fermi effect from data_array
+    data_array = data_array / n_vectorized(axis_array, temp)
+    # symmetrize values
+    new_array_size = 2 * len(data_array)
+    if 0 in axis_array:
+        new_array_size - 1
+    new_data_array = np.zeros(new_array_size)
+    new_axis_array = np.zeros(new_array_size)
+    for i in range(len(data_array)):
+        new_data_array[2*i] = data_array[i]
+        new_axis_array[2*i] = axis_array[i]
+        if axis_array[i] != 0:
+            new_data_array[2*i + 1] = data_array[i]
+            new_axis_array[2*i+1] = -axis_array[i]
+    # sort by axis
+    return sorted(new_axis_array, reverse=True), [x for _, x in sorted(zip(new_axis_array, new_data_array), reverse=True)]
