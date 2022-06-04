@@ -45,8 +45,6 @@ def A_BCS(k, w, a, c, dk, T):
     BCS Spectral Function (https://arxiv.org/pdf/cond-mat/0304505.pdf) (non-constant gap)
     """
     local_T = max(T, 0)
-    # print(k)
-    # return 1 / ((w + E(k, a, c, dk)) ** 2 + local_T ** 2)
 
     return (1 / math.pi) * (u(k, a, c, dk) * local_T / ((w - E(k, a, c, dk)) ** 2 + local_T ** 2) + v(k, a, c, dk) * local_T / (
                 (w + E(k, a, c, dk)) ** 2 + local_T ** 2))
@@ -57,7 +55,7 @@ def A_BCS_2(k, w, a, c, dk, T):
     Alternative Spectral Function - broken
     (http://ex7.iphy.ac.cn/downfile/32_PRB_57_R11093.pdf)
     """
-    local_T = max(3, T)
+    local_T = max(T, 0)
     return local_T / (math.pi * ((w - e(k, a, c) - (dk ** 2) / (w + e(k, a, c))) ** 2 + local_T ** 2))
 
 

@@ -41,6 +41,7 @@ class DataReader:
                             extent=[min(k), max(k), min(w), max(w)])  # drawing the function
             plt.colorbar(im)
             plt.show()
+        Eugen_data_file.close()
 
     def getZoomedData(self, width=140, height=70, x_center=360, y_center=75, scaleup=17500):
         """

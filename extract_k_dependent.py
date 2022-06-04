@@ -55,7 +55,8 @@ class KDependentExtractor:
                     [0, 0, 0],
                     [ONE_BILLION, 75, 75]),
                 p0=[scale_0, T_0, dk_0],
-                sigma=fitting_sigma)
+                sigma=fitting_sigma,
+                maxfev=2000)
             scale_trajectory[i] = params[0]
             T_trajectory[i] = params[1]
             scale_0, T_0, dk_0 = params
