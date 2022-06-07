@@ -3,7 +3,7 @@ import numpy as np
 
 
 class DataReader:
-    def __init__(self, fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat", w_dim=201, k_dim=695, show_results=False):
+    def __init__(self, fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat", w_dim=201, k_dim=695, plot=True):
         Eugen_data_file = open(fileName, "r")
         Eugen_data_file.readline()  # skip blank starting line
         temp = Eugen_data_file.readline()  # energy?
@@ -34,8 +34,7 @@ class DataReader:
         self.zoomed_w = None
         self.zoomed_k = None
         self.zoomed_Z = None
-        self.show_results = show_results
-        if show_results:
+        if plot:
             plt.title("Raw Eugen data")
             im = plt.imshow(Eugen_data, cmap=plt.cm.RdBu, aspect='auto',
                             extent=[min(k), max(k), min(w), max(w)])  # drawing the function
@@ -43,7 +42,7 @@ class DataReader:
             plt.show()
         Eugen_data_file.close()
 
-    def getZoomedData(self, width=140, height=70, x_center=360, y_center=75, scaleup=17500):
+    def getZoomedData(self, width=140, height=70, x_center=360, y_center=75, scaleup=17500, plot=True):
         """
         Zoom in onto a part of the spectrum. Sets zoomed_k, zoomed_w, and zoomed_Z
         :param width:
@@ -51,6 +50,7 @@ class DataReader:
         :param x_center: measured from top left
         :param y_center: measured from top left
         :param scaleup:
+        :param plot:
         :return:
         """
         height_offset = int(y_center - 0.5 * height)
@@ -74,7 +74,7 @@ class DataReader:
         self.zoomed_w = zoomed_w
         self.zoomed_Z = zoomed_Z
 
-        if self.show_results:
+        if plot:
             plt.title("Raw Eugen data (Reduced Window)")
             im = plt.imshow(zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
                             extent=[min(zoomed_k), max(zoomed_k), min(zoomed_w), max(zoomed_w)])  # drawing the function
