@@ -4,9 +4,10 @@ import numpy as np
 import scipy.optimize
 import scipy.stats
 
-from extraction_functions import EDC_prep, EDC_array
+from extraction_functions import EDC_prep, EDC_array_with_SE
 from general import ONE_BILLION, d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial, \
-    d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial, d10_polynomial, F_test
+    d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial, d10_polynomial, F_test, \
+    polynomial_functions
 
 
 class KDependentExtractor:
@@ -35,27 +36,31 @@ class KDependentExtractor:
         z_width = self.Z[0].size
         scale_trajectory = np.zeros(z_width)
         T_trajectory = np.zeros(z_width)
-        scale_0, T_0, dk_0 = 1, 1, 1
-        for i in range(z_width):
+        params = [1, 1, 1, 1500, -15, 0.1, 200]
+        fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
+        for i in fitting_range:
+            if i == int(z_width / 2) - 1:
+                save_params = params
+            if i == int(z_width / 2) + 1:
+                params = save_params
             low_noise_w, low_noise_slice, fitting_sigma, points_in_fit, fit_start_index, fit_end_index = \
                 EDC_prep(i, self.Z, self.w, self.min_fit_count, exclude_secondary=False)
 
             params, pcov = scipy.optimize.curve_fit(
-                partial(EDC_array, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
+                partial(EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
                         energy_conv_sigma=self.energy_conv_sigma, temp=self.temp), low_noise_w, low_noise_slice,
                 bounds=(
-                    [0, 0, 0],
-                    [ONE_BILLION, 75, 75]),
-                p0=[scale_0, T_0, dk_0],
+                    [0, 0, 0, 0, -np.inf, 0, -np.inf],
+                    [ONE_BILLION, 75, 75, np.inf, 0, np.inf, np.inf]),
+                p0=params,
                 sigma=fitting_sigma,
                 maxfev=2000)
             scale_trajectory[i] = params[0]
             T_trajectory[i] = params[1]
-            scale_0, T_0, dk_0 = params
             if plot_fits:
                 plt.plot(low_noise_w, low_noise_slice)
                 plt.plot(low_noise_w,
-                         EDC_array(
+                         EDC_array_with_SE(
                              low_noise_w, *params, self.initial_a_estimate, self.initial_c_estimate, self.k[i],
                              self.energy_conv_sigma, self.temp))
                 plt.show()
@@ -76,6 +81,7 @@ class KDependentExtractor:
 
     def get_secondary_electron_scale_trajectory(self, y_pos, plot=True):
         """
+        :param plot:
         :param y_pos: index of MDC to fit secondary electron polynomial to
         :return:
         """
@@ -97,89 +103,51 @@ class KDependentExtractor:
         if KDependentExtractor.scale_trajectory is None:
             raise AttributeError("Uninitialized scale_trajectory.")
 
-        polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
-                                d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
-                                d10_polynomial]
-
-        for i in range(9):
-            inner_params, inner_pcov = scipy.optimize.curve_fit(polynomial_functions[i], self.k, self.scale_trajectory)
-            outer_params, outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 1], self.k,
-                                                                self.scale_trajectory)
-            inner_fit = polynomial_functions[i](self.k, *inner_params)
-            outer_fit = polynomial_functions[i + 1](self.k, *outer_params)
-            if plot:
-                plt.plot(self.k, self.scale_trajectory)
-                plt.plot(self.k, inner_fit)
-                plt.show()
-            F_statistic = F_test(self.scale_trajectory, inner_fit, i + 1, outer_fit, i + 2,
-                                 np.ones(len(self.scale_trajectory)),
-                                 len(self.scale_trajectory))
-            critical_value = scipy.stats.f.ppf(q=1 - 0.5, dfn=1, dfd=len(self.scale_trajectory) - (i + 2))
-            if F_statistic < critical_value:
-                print("Optimal scale polynomial is of degree: " + str(i + 1))
-                print("Fitted scale parameters are: " + str(inner_params))
-                self.scale_polynomial_degree = i + 1
-                self.scale_polynomial_fit = inner_fit
-                return inner_params, polynomial_functions[i]
-        raise RuntimeError("Unable to find optimal scale polynomial fit")
+        inner_params, polynomial_function, self.scale_polynomial_degree, self.scale_polynomial_fit = self.get_polynomial_fit(
+            self.scale_trajectory, curve_name="scale", plot=plot)
+        return inner_params, polynomial_function
 
     def get_T_polynomial_fit(self, plot=True):
         if KDependentExtractor.T_trajectory is None:
             raise AttributeError("Uninitialized T_trajectory.")
-        polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
-                                d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
-                                d10_polynomial]
-        for i in range(9):
-            inner_params, inner_pcov = scipy.optimize.curve_fit(polynomial_functions[i], self.k, self.T_trajectory)
-            outer_params, outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 1], self.k,
-                                                                self.T_trajectory)
-            inner_fit = polynomial_functions[i](self.k, *inner_params)
-            outer_fit = polynomial_functions[i + 1](self.k, *outer_params)
-            if plot:
-                plt.plot(self.k, self.T_trajectory)
-                plt.plot(self.k, inner_fit)
-                plt.show()
-            F_statistic = F_test(self.T_trajectory, inner_fit, i + 1, outer_fit, i + 2,
-                                 np.ones(len(self.T_trajectory)),
-                                 len(self.T_trajectory))
-            critical_value = scipy.stats.f.ppf(q=1 - 0.5, dfn=1, dfd=len(self.T_trajectory) - (i + 2))
-            if F_statistic < critical_value:
-                print("Optimal T polynomial is of degree: " + str(i + 1))
-                print("Fitted T parameters are: " + str(inner_params))
-                self.T_polynomial_degree = i + 1
-                self.T_polynomial_fit = inner_fit
-                return inner_params, polynomial_functions[i]
-        raise RuntimeError("Unable to find optimal T polynomial fit")
+
+        inner_params, polynomial_function, self.T_polynomial_degree, self.T_polynomial_fit = self.get_polynomial_fit(
+            self.T_trajectory, curve_name="T", plot=plot)
+        return inner_params, polynomial_function
 
     def get_secondary_electron_scale_polynomial_fit(self, plot=True):
         if KDependentExtractor.secondary_electron_scale_trajectory is None:
             raise AttributeError("Uninitialized secondary_electron_scale_trajectory.")
-        polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
-                                d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
-                                d10_polynomial]
-        for i in range(9):
-            inner_params, inner_pcov = scipy.optimize.curve_fit(polynomial_functions[i], self.k,
-                                                                self.secondary_electron_scale_trajectory)
-            outer_params, outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 1], self.k,
-                                                                self.secondary_electron_scale_trajectory)
+
+        inner_params, polynomial_function, self.secondary_electron_scale_degree, self.secondary_electron_scale_fit = self.get_polynomial_fit(
+            self.secondary_electron_scale_trajectory, curve_name="secondary electron scale", plot=plot)
+        return inner_params, polynomial_function
+
+    def get_polynomial_fit(self, curve, curve_name="", plot=True):
+        for i in range(8):
+            inner_params, inner_pcov = scipy.optimize.curve_fit(polynomial_functions[i], self.k, curve)
+            outer_params, outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 1], self.k, curve)
+            outer_outer_params, outer_outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 2], self.k, curve)
             inner_fit = polynomial_functions[i](self.k, *inner_params)
             outer_fit = polynomial_functions[i + 1](self.k, *outer_params)
+            outer_outer_fit = polynomial_functions[i + 2](self.k, *outer_outer_params)
             if plot:
-                plt.plot(self.k, self.secondary_electron_scale_trajectory)
+                plt.plot(self.k, curve)
                 plt.plot(self.k, inner_fit)
                 plt.show()
-            F_statistic = F_test(self.secondary_electron_scale_trajectory, inner_fit, i + 1, outer_fit, i + 2,
-                                 np.ones(len(self.secondary_electron_scale_trajectory)),
-                                 len(self.secondary_electron_scale_trajectory))
-            critical_value = scipy.stats.f.ppf(q=1 - 0.5, dfn=1,
-                                               dfd=len(self.secondary_electron_scale_trajectory) - (i + 2))
-            if F_statistic < critical_value:
-                print("Optimal secondary electron scale polynomial is of degree: " + str(i + 1))
-                print("Fitted secondary electron scale parameters are: " + str(inner_params))
-                self.secondary_electron_scale_degree = i + 1
-                self.secondary_electron_scale_fit = inner_fit
-                return inner_params, polynomial_functions[i]
-        raise RuntimeError("Unable to find optimal secondary electron scale polynomial fit")
+            sig_lvl = 0.05
+            F_statistic = F_test(curve, inner_fit, i + 1, outer_fit, i + 2, np.ones(len(curve)), len(curve))
+            critical_value = scipy.stats.f.ppf(q=1 - sig_lvl, dfn=1, dfd=len(curve) - (i + 2))
+            F_statistic_2 = F_test(curve, inner_fit, i + 1, outer_outer_fit, i + 3, np.ones(len(curve)), len(curve))
+            critical_value_2 = scipy.stats.f.ppf(q=1 - sig_lvl, dfn=2, dfd=len(curve) - (i + 3))
+            if F_statistic < critical_value and F_statistic_2 < critical_value_2:
+                print(F_statistic, critical_value)
+                print("Optimal " + curve_name + " polynomial is of degree: " + str(i + 1))
+                print("Fitted " + curve_name + " parameters are: " + str(inner_params))
+                curve_degree = i + 1
+                curve_fit = inner_fit
+                return inner_params, polynomial_functions[i], curve_degree, curve_fit
+        raise RuntimeError("Unable to find optimal " + curve_name + " polynomial fit")
 
     def plot(self):
         if self.scale_polynomial_fit is None or self.T_polynomial_fit is None:

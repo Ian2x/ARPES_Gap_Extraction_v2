@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from general import n, n_vectorized
+from spectral_functions import E
+
 
 class DataReader:
     def __init__(self, fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat", w_dim=201, k_dim=695, plot=True):
@@ -76,7 +79,14 @@ class DataReader:
 
         if plot:
             plt.title("Raw Eugen data (Reduced Window)")
+            # zoomed_Z = zoomed_Z - 700
+            # zoomed_Z = np.clip(zoomed_Z, a_min=0, a_max=None)
+            # zoomed_Z /= n_vectorized(zoomed_w, 100.86)[:, None]
             im = plt.imshow(zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
                             extent=[min(zoomed_k), max(zoomed_k), min(zoomed_w), max(zoomed_w)])  # drawing the function
             plt.colorbar(im)
+            # plt.plot(zoomed_k, -E((zoomed_k - 0.00608974), 3563.07808, -26.1965687, 7.00118984))  # 0290
+            # plt.plot(zoomed_k, 3563.07808 * (zoomed_k - 0.00608974) ** 2 - 26.1965687)
+            # plt.plot(zoomed_k, -E((zoomed_k - 0.01248904), 2568.30255, -21.0992210, 13.5027728))  # 0333
+            # plt.plot(zoomed_k, 2568.30255 * (zoomed_k - 0.01248904) ** 2 - 21.0992210)
             plt.show()

@@ -2,7 +2,6 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 ##################################################
 # GENERAL FUNCTIONS AND CONSTANTS
 ##################################################
@@ -56,7 +55,7 @@ def energy_conv_map(k, w, spectrum, energy_conv_sigma, scale):
             curr_w = np.full(inv_w[j].size, w[i][j])
             # Energy convolution to find final intensity at point (i, j)
             res = np.convolve(
-                              R(rev_inv_w[j] - curr_w, energy_conv_sigma), scale * spectrum(inv_k[j], inv_w[j]), mode='valid')
+                R(rev_inv_w[j] - curr_w, energy_conv_sigma), scale * spectrum(inv_k[j], inv_w[j]), mode='valid')
             results[i][j] = res
 
     return results
@@ -247,7 +246,7 @@ def k_as_index(input_k, k):
 
 
 def d1_polynomial(x, a):
-    return a * x
+    return np.full(len(x), a)
 
 
 def d2_polynomial(x, a, b):
@@ -323,3 +322,8 @@ def extend_array(array, one_side_extension):
     b = np.arange(array[array_size - 1] + step_size, array[array_size - 1] + (one_side_extension + 1) * step_size,
                   step_size)
     return np.concatenate((a, array, b))
+
+
+polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
+                        d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
+                        d10_polynomial]

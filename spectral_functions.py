@@ -45,9 +45,9 @@ def A_BCS(k, w, a, c, dk, T):
     BCS Spectral Function (https://arxiv.org/pdf/cond-mat/0304505.pdf) (non-constant gap)
     """
     local_T = max(T, 0)
-
-    return (1 / math.pi) * (u(k, a, c, dk) * local_T / ((w - E(k, a, c, dk)) ** 2 + local_T ** 2) + v(k, a, c, dk) * local_T / (
-                (w + E(k, a, c, dk)) ** 2 + local_T ** 2))
+    return (1 / math.pi) * (
+            u(k, a, c, dk) * local_T / ((w - E(k, a, c, dk)) ** 2 + local_T ** 2) + v(k, a, c, dk) * local_T / (
+            (w + E(k, a, c, dk)) ** 2 + local_T ** 2))
 
 
 def A_BCS_2(k, w, a, c, dk, T):
@@ -57,6 +57,27 @@ def A_BCS_2(k, w, a, c, dk, T):
     """
     local_T = max(T, 0)
     return local_T / (math.pi * ((w - e(k, a, c) - (dk ** 2) / (w + e(k, a, c))) ** 2 + local_T ** 2))
+
+
+def sigma_real(k, w, a, c, dk, T0):
+    T0 = max(T0, 0)
+    return dk * dk * (w + E(k, a, c, dk)) / ((w + E(k, a, c, dk)) * (w + E(k, a, c, dk)) + T0 * T0)
+
+
+def sigma_imaginary(k, w, a, c, dk, T0, T1):
+    T0 = max(T0, 0)
+    return -T1 - T0 * dk * dk / ((w + E(k, a, c, dk)) * (w + E(k, a, c, dk)) + T0 * T0)
+
+
+def A_BCS_3(k, w, a, c, dk, T0, T1):
+    """
+    Same as A_BCS_2, but complex version
+    (http://ex7.iphy.ac.cn/downfile/32_PRB_57_R11093.pdf)
+    """
+    return 1 / np.pi * sigma_imaginary(k, w, a, c, dk, T0, T1) / (
+            (w - E(k, a, c, dk) - sigma_real(k, w, a, c, dk, T0)) * (
+            w - E(k, a, c, dk) - sigma_real(k, w, a, c, dk, T0)) + sigma_imaginary(k, w, a, c, dk, T0,
+            T1) * sigma_imaginary(k, w, a, c, dk, T0, T1))
 
 
 def Io(k):
@@ -92,5 +113,6 @@ def norm_state_I(k, w, true_a, true_c, true_dk, true_T, scaleup_factor, energy_c
     """
     Final Normal-state Intensity (dk=0, knows a, c, and T) (ONLY meant to be used with simulated data)
     """
-    convolution_function = partial(norm_state_Io_n_A_BCS, true_a=true_a, true_c=true_c, true_dk=true_dk, true_T=true_T, temp=temp)
+    convolution_function = partial(norm_state_Io_n_A_BCS, true_a=true_a, true_c=true_c, true_dk=true_dk, true_T=true_T,
+                                   temp=temp)
     return energy_conv_map(k, w, convolution_function, energy_conv_sigma, scaleup_factor)

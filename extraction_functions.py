@@ -2,9 +2,10 @@ import numpy as np
 import math
 
 from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array
-from spectral_functions import A_BCS, A_BCS_2
+from spectral_functions import A_BCS, A_BCS_2, A_BCS_3
 
-def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+
+def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, convolution_extension=None):
     """
         EDC slice function
         :param w_array: energy array
@@ -29,6 +30,29 @@ def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma,
                                       energy_conv_sigma)
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + s
     return return_array
+
+def test_EDC_array_with_SE(w_array, scale, T, T0, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+                      convolution_extension=None):
+    return_array = test_EDC_array(w_array, scale, T, T0, dk, a, c, fixed_k, energy_conv_sigma, temp,
+                             convolution_extension=convolution_extension)
+    # add in secondary electrons
+    secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
+    for i in range(len(w_array)):
+        return_array[i] = return_array[i] + secondary[i]
+    return return_array
+
+
+def test_EDC_array(w_array, scale, T, T0, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+    if convolution_extension is None:
+        convolution_extension = int(
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+        A_BCS_3(fixed_k, temp_w_array, a, c, dk, T, T0) * n_vectorized(temp_w_array, temp), scale),
+                                      energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
+    return return_array
+
 
 def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
                       convolution_extension=None):
@@ -189,7 +213,7 @@ def symmetrize_EDC(axis_array, data_array):
     def interpolate_point(value):
         # Assumes value is greater than smallest axis_array value, and smaller than largest axis_array value
         for i in range(len(axis_array)):
-            if value == axis_array[i]:
+            if math.fabs(value - axis_array[i]) < 0.00001:
                 return data_array[i]
             elif (axis_array[i] < value < axis_array[i + 1]) or (axis_array[i] > value > axis_array[i + 1]):
                 total_distance = math.fabs(axis_array[i+1] - axis_array[i])

@@ -19,30 +19,24 @@ def extract_ac(Z, k, w, show_results=False):
     inv_Z = np.array([list(i) for i in zip(*Z)])
     z_width = Z[0].size
     super_state_trajectory = np.zeros(z_width)
+    params = [40000, -25, 20, 1500, -10, 0.1, 200]
 
-    # increase fitting speed by saving data
-    try:
-        params, pcov = scipy.optimize.curve_fit(
-            lorentz_form_with_secondary_electrons, w, inv_Z[0], bounds=(
-                [0, -70, 0, 0, -70, 0, 0],
-                [np.inf, 0, np.inf, np.inf, 0, 1, np.inf]), maxfev=2000)
-    except RuntimeError:
-        print('ERROR: Extract ac failed on index 0')
-        quit()
+    super_state_trajectory[0] = params[1]
 
-    last_a, last_b, last_c, last_p, last_q, last_r, last_s = params
-
-    super_state_trajectory[0] = last_b
-
-    for i in range(1, z_width):  # width
+    fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
+    for i in fitting_range:  # width
+        if i == int(z_width / 2) - 1:
+            save_params = params
+        if i == int(z_width / 2) + 1:
+            params = save_params
         try:
-            params, pcov = scipy.optimize.curve_fit(lorentz_form_with_secondary_electrons, w, inv_Z[i], p0=(
-                last_a, last_b, last_c, last_p, last_q, last_r, last_s), maxfev=2000)
+            params, pcov = scipy.optimize.curve_fit(lorentz_form_with_secondary_electrons, w, inv_Z[i], p0=params,
+                                                    bounds=([0, -70, 0, 0, -70, 0, 0],
+                                                            [np.inf, 0, np.inf, np.inf, 0, 1, np.inf]))
         except RuntimeError:
             print('ERROR: Extract ac failed on index ' + str(i))
             quit()
-        last_a, last_b, last_c, last_p, last_q, last_r, last_s = params
-        super_state_trajectory[i] = last_b
+        super_state_trajectory[i] = params[1]
 
     def trajectory_form(x, a, c, dk, k_error):
         return -((a * (x - k_error) ** 2 + c) ** 2 + dk ** 2) ** 0.5

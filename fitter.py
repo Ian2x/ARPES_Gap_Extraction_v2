@@ -5,27 +5,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 
-from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array
+import scipy
+
+from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array, EDC_array, \
+    test_EDC_array_with_SE
 from general import k_as_index, get_degree_polynomial
 
 
 class Fitter:
 
     @staticmethod
-    def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma, temp):
+    def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma):
         pars = lmfit.Parameters()
-        pars.add('scale', value=70000, min=0, max=1000000)
-        pars.add('T', value=7, min=0, max=25)
-        pars.add('dk', value=10, min=0, max=25)
-        pars.add('s', value=1500, min=1000, max=2000, vary=True)
+        pars.add('scale', value=60000, min=0, max=1000000)
+        pars.add('T', value=20, min=0, max=30)
+        pars.add('dk', value=0, min=-25, max=25)
+        pars.add('s', value=1300, min=1000, max=2000, vary=True)
         pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
         pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
         # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
         low_noise_w = w
         low_noise_slice = [Z[i][kf_index] for i in range(len(w))]
         low_noise_w, low_noise_slice = symmetrize_EDC(low_noise_w, low_noise_slice)
-        EDC_func = partial(Norman_EDC_array, fixed_k=math.fabs(k[kf_index]),
-                           energy_conv_sigma=energy_conv_sigma, temp=temp)
+        EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
+                           energy_conv_sigma=energy_conv_sigma)
 
         def calculate_residual(p):
             EDC_residual = EDC_func(
@@ -33,26 +36,49 @@ class Fitter:
             weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
             return weighted_EDC_residual
 
-        mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
-        result = mini.minimize(method='leastsq')
-        print(lmfit.fit_report(result))
-        scale = result.params.get('scale').value
-        T = result.params.get('T').value
-        dk = result.params.get('dk').value
-        s = result.params.get('s').value
-        a = result.params.get('a').value
-        c = result.params.get('c').value
-        plt.title("Norman fit")
-        plt.plot()
+        # mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
+        # result = mini.minimize(method='leastsq')
+        # print(lmfit.fit_report(result))
+        # scale = result.params.get('scale').value
+        # T = result.params.get('T').value
+        # dk = result.params.get('dk').value
+        # s = result.params.get('s').value
+        # a = result.params.get('a').value
+        # c = result.params.get('c').value
+        # plt.title("Norman fit")
+        # plt.plot(low_noise_w, low_noise_slice, label='data')
+        # plt.plot(low_noise_w, EDC_func(low_noise_w, scale, T, dk, s, a, c), label='fit')
+        # plt.show()'
+
+        import cmath
+
+        def my_func(w, dk, T, T2, scale):
+            sig_gap_num = complex(dk * dk, 0)
+            if w > abs(dk) or w < -abs(dk):
+                gamma0 = abs(T) + abs(T2) * cmath.sqrt(w ** 2 - T2 ** 2) / abs(w)
+            else:
+                gamma0 = abs(T)
+            sig_gap_dom = complex(w, T2)
+            sig_gap = sig_gap_num / sig_gap_dom
+            sig = sig_gap - complex(0, 1) * gamma0
+            Green = scale / (w - sig)
+            return -Green.imag / np.pi
+
+        mfv = np.vectorize(my_func)  # dk, T, T2, scale
+        params, pcov = scipy.optimize.curve_fit(mfv, low_noise_w, low_noise_slice, p0=[5, 15, 0, 3e+05], sigma=np.sqrt(low_noise_slice), maxfev=2000)
         plt.plot(low_noise_w, low_noise_slice, label='data')
-        plt.plot(low_noise_w, EDC_func(low_noise_w, scale, T, dk, s, a, c), label='fit')
+        plt.plot(low_noise_w, mfv(low_noise_w, *params), label='fit')
         plt.show()
+        print(str(params[0]) + " +- " + str(np.sqrt(np.diag(pcov))[0]))
 
     @staticmethod
-    def get_fitted_map(fileName, k, w, energy_conv_sigma, temperature):
+    def get_fitted_map(fileName, k, w, energy_conv_sigma, temperature, second_fit=False):
         data_file = open(fileName, "r")
         while '[[Variables]]' not in data_file.readline():
             pass
+        if second_fit:
+            while '[[Variables]]' not in data_file.readline():
+                pass
 
         def extract_value(s):
             # regex for number
@@ -112,6 +138,7 @@ class Fitter:
         im = plt.imshow(fitted_Z, cmap=plt.cm.RdBu, aspect='auto', interpolation='nearest',
                         extent=[min(k), max(k), min(w), max(w)])  # drawing the function
         plt.colorbar(im)
+
         plt.show()
         return fitted_Z
 
@@ -161,7 +188,7 @@ class Fitter:
                 self.index_to_fit = [*range(a, b, EDC_density)] + [*range(c, d, EDC_density)]
 
     def fit(self, scale_values, T_values, secondary_electron_scale_values, plot_results=True, kdependent_fixed=False,
-            ac_fixed=False, q_estimate=-7.5, r_estimate=0.5, s_estimate=250, k_error_estimate=0):
+            ac_fixed=False, dk_0_fixed=False, q_estimate=-7.5, r_estimate=0.5, s_estimate=250, k_error_estimate=0):
         print("Fitting: " + str(self.index_to_fit))
 
         should_vary_kdependent = not kdependent_fixed
@@ -195,7 +222,7 @@ class Fitter:
                 pars.add('secondary_electron_scale_' + str(i), value=secondary_electron_scale_values[i],
                          # min=secondary_electron_scale_values[i] * 1000, max=secondary_electron_scale_values[i] / 1000,
                          vary=should_vary_kdependent)
-        pars.add('dk', value=self.dk_estimate, min=0, max=100, vary=True)
+        pars.add('dk', value=(0 if dk_0_fixed else self.dk_estimate), min=0, max=100, vary=(not dk_0_fixed))
         pars.add('q', value=q_estimate, max=0, vary=True)
         pars.add('r', value=r_estimate, min=0, vary=True)
         pars.add('s', value=s_estimate, vary=True)
@@ -204,6 +231,7 @@ class Fitter:
         pars.add('c', value=self.c_estimate, min=min(self.c_estimate / 1.5, -50), max=max(self.c_estimate * 1.5, -15),
                  vary=should_vary_ac)
         pars.add('k_error', value=k_error_estimate, min=-0.03, max=0.03, vary=True)
+        pars.add('T0', value=1, vary=True)
 
         # Prepare EDCs to fit
         EDC_func_array = []
@@ -215,7 +243,7 @@ class Fitter:
                                                                           exclude_secondary=False)
             low_noise_ws.append(temp_low_noise_w)
             low_noise_slices.append(temp_low_noise_slice)
-            EDC_func_array.append(partial(EDC_array_with_SE,
+            EDC_func_array.append(partial(test_EDC_array_with_SE,
                                           energy_conv_sigma=self.energy_conv_sigma, temp=self.temp))
         # Fetch local polynomials
         scale_polynomial = get_degree_polynomial(len(scale_values))
@@ -237,7 +265,7 @@ class Fitter:
                                                                                      *secondary_electron_scale_params)
 
                 EDC_residual = EDC_func_array[i](
-                    low_noise_ws[i], local_scale, local_T, p['dk'],
+                    low_noise_ws[i], local_scale, local_T, p['T0'], p['dk'],
                     local_secondary_electron_scale, p['q'],
                     p['r'], p['s'], p['a'], p['c'], local_k) - \
                                low_noise_slices[i]
@@ -260,11 +288,11 @@ class Fitter:
         lmfit_a = result.params.get('a').value
         lmfit_c = result.params.get('c').value
         lmfit_k_error = result.params.get('k_error').value
+        lmfit_T0 = result.params.get('T0').value
 
         if plot_results:
             print("FINAL DK: ")
             print(lmfit_dk)
-            print(self.index_to_fit)
             for i in range(0, len(self.index_to_fit), max(int(len(self.index_to_fit) / 10), 1)):
                 ki = self.index_to_fit[i]
                 plt.title("momentum: " + str(self.k[ki]))
@@ -273,7 +301,7 @@ class Fitter:
                 local_T = get_degree_polynomial(len(T_values))(self.k[ki], *lmfit_T_params)
                 local_secondary_electron_scale = get_degree_polynomial(len(secondary_electron_scale_values))(self.k[ki],
                                                                                                              *lmfit_secondary_electron_scale_params)
-                plt.plot(low_noise_ws[i], EDC_func_array[i](low_noise_ws[i], local_scale, local_T, lmfit_dk,
+                plt.plot(low_noise_ws[i], EDC_func_array[i](low_noise_ws[i], local_scale, local_T, lmfit_T0, lmfit_dk,
                                                             local_secondary_electron_scale, lmfit_q, lmfit_r,
                                                             lmfit_s, lmfit_a, lmfit_c, self.k[ki] - lmfit_k_error),
                          label='fit')
