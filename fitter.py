@@ -7,8 +7,7 @@ import re
 
 import scipy
 
-from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array, EDC_array, \
-    test_EDC_array_with_SE
+from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC
 from general import k_as_index, get_degree_polynomial
 
 
@@ -16,25 +15,25 @@ class Fitter:
 
     @staticmethod
     def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma):
-        pars = lmfit.Parameters()
-        pars.add('scale', value=60000, min=0, max=1000000)
-        pars.add('T', value=20, min=0, max=30)
-        pars.add('dk', value=0, min=-25, max=25)
-        pars.add('s', value=1300, min=1000, max=2000, vary=True)
-        pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
-        pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
-        # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
+        # pars = lmfit.Parameters()
+        # pars.add('scale', value=60000, min=0, max=1000000)
+        # pars.add('T', value=20, min=0, max=30)
+        # pars.add('dk', value=0, min=-25, max=25)
+        # pars.add('s', value=1300, min=1000, max=2000, vary=True)
+        # pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
+        # pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
+        # # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
         low_noise_w = w
         low_noise_slice = [Z[i][kf_index] for i in range(len(w))]
         low_noise_w, low_noise_slice = symmetrize_EDC(low_noise_w, low_noise_slice)
-        EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
-                           energy_conv_sigma=energy_conv_sigma)
-
-        def calculate_residual(p):
-            EDC_residual = EDC_func(
-                np.asarray(low_noise_w), p['scale'], p['T'], p['dk'], p['s'], p['a'], p['c']) - low_noise_slice
-            weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
-            return weighted_EDC_residual
+        # EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
+        #                    energy_conv_sigma=energy_conv_sigma)
+        #
+        # def calculate_residual(p):
+        #     EDC_residual = EDC_func(
+        #         np.asarray(low_noise_w), p['scale'], p['T'], p['dk'], p['s'], p['a'], p['c']) - low_noise_slice
+        #     weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
+        #     return weighted_EDC_residual
 
         # mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
         # result = mini.minimize(method='leastsq')
@@ -187,7 +186,7 @@ class Fitter:
             else:
                 self.index_to_fit = [*range(a, b, EDC_density)] + [*range(c, d, EDC_density)]
 
-    def fit(self, scale_values, T_values, secondary_electron_scale_values, plot_results=True, kdependent_fixed=False,
+    def fit(self, scale_values, T0_values, T1_values, secondary_electron_scale_values, plot_results=True, kdependent_fixed=False,
             ac_fixed=False, dk_0_fixed=False, q_estimate=-7.5, r_estimate=0.5, s_estimate=250, k_error_estimate=0):
         print("Fitting: " + str(self.index_to_fit))
 
@@ -204,14 +203,23 @@ class Fitter:
                 pars.add('scale_' + str(i), value=scale_values[i],
                          # min=scale_values[i] * 1000, max=scale_values[i] / 1000,
                          vary=should_vary_kdependent)
-        for i in range(len(T_values)):
-            if T_values[i] >= 0:
-                pars.add('T_' + str(i), value=T_values[i],
-                         # min=T_values[i] / 1000, max=T_values[i] * 1000,
+        for i in range(len(T0_values)):
+            if T0_values[i] >= 0:
+                pars.add('T0_' + str(i), value=T0_values[i],
+                         # min=T0_values[i] / 1000, max=T0_values[i] * 1000,
                          vary=should_vary_kdependent)
             else:
-                pars.add('T_' + str(i), value=T_values[i],
-                         # min=T_values[i] * 1000, max=T_values[i] / 1000,
+                pars.add('T0_' + str(i), value=T0_values[i],
+                         # min=T0_values[i] * 1000, max=T0_values[i] / 1000,
+                         vary=should_vary_kdependent)
+        for i in range(len(T1_values)):
+            if T1_values[i] >= 0:
+                pars.add('T1_' + str(i), value=T1_values[i],
+                         # min=T1_values[i] / 1000, max=T1_values[i] * 1000,
+                         vary=should_vary_kdependent)
+            else:
+                pars.add('T1_' + str(i), value=T1_values[i],
+                         # min=T1_values[i] * 1000, max=T1_values[i] / 1000,
                          vary=should_vary_kdependent)
         for i in range(len(secondary_electron_scale_values)):
             if secondary_electron_scale_values[i] >= 0:
@@ -231,7 +239,6 @@ class Fitter:
         pars.add('c', value=self.c_estimate, min=min(self.c_estimate / 1.5, -50), max=max(self.c_estimate * 1.5, -15),
                  vary=should_vary_ac)
         pars.add('k_error', value=k_error_estimate, min=-0.03, max=0.03, vary=True)
-        pars.add('T0', value=1, vary=True)
 
         # Prepare EDCs to fit
         EDC_func_array = []
@@ -243,29 +250,32 @@ class Fitter:
                                                                           exclude_secondary=False)
             low_noise_ws.append(temp_low_noise_w)
             low_noise_slices.append(temp_low_noise_slice)
-            EDC_func_array.append(partial(test_EDC_array_with_SE,
+            EDC_func_array.append(partial(EDC_array_with_SE,
                                           energy_conv_sigma=self.energy_conv_sigma, temp=self.temp))
         # Fetch local polynomials
         scale_polynomial = get_degree_polynomial(len(scale_values))
-        T_polynomial = get_degree_polynomial(len(T_values))
+        T0_polynomial = get_degree_polynomial(len(T0_values))
+        T1_polynomial = get_degree_polynomial(len(T1_values))
         secondary_electron_scale_polynomial = get_degree_polynomial(len(secondary_electron_scale_values))
 
         def calculate_residual(p):
             residual = np.zeros(0)
             scale_polynomial_params = [p['scale_' + str(i)] for i in range(len(scale_values))]
-            T_polynomial_params = [p['T_' + str(i)] for i in range(len(T_values))]
+            T0_polynomial_params = [p['T0_' + str(i)] for i in range(len(T0_values))]
+            T1_polynomial_params = [p['T1_' + str(i)] for i in range(len(T1_values))]
             secondary_electron_scale_params = [p['secondary_electron_scale_' + str(i)] for i in
                                                range(len(secondary_electron_scale_values))]
             for i in range(len(self.index_to_fit)):
                 ki = self.index_to_fit[i]
                 local_k = self.k[ki] - p['k_error']
                 local_scale = scale_polynomial(local_k, *scale_polynomial_params)
-                local_T = T_polynomial(local_k, *T_polynomial_params)
+                local_T0 = T0_polynomial(local_k, *T0_polynomial_params)
+                local_T1 = T1_polynomial(local_k, *T1_polynomial_params)
                 local_secondary_electron_scale = secondary_electron_scale_polynomial(local_k,
                                                                                      *secondary_electron_scale_params)
 
                 EDC_residual = EDC_func_array[i](
-                    low_noise_ws[i], local_scale, local_T, p['T0'], p['dk'],
+                    low_noise_ws[i], local_scale, local_T0, local_T1, p['dk'],
                     local_secondary_electron_scale, p['q'],
                     p['r'], p['s'], p['a'], p['c'], local_k) - \
                                low_noise_slices[i]
@@ -278,7 +288,8 @@ class Fitter:
         print(lmfit.fit_report(result))
 
         lmfit_scale_params = [result.params.get('scale_' + str(i)).value for i in range(len(scale_values))]
-        lmfit_T_params = [result.params.get('T_' + str(i)).value for i in range(len(T_values))]
+        lmfit_T0_params = [result.params.get('T0_' + str(i)).value for i in range(len(T0_values))]
+        lmfit_T1_params = [result.params.get('T1_' + str(i)).value for i in range(len(T1_values))]
         lmfit_secondary_electron_scale_params = [result.params.get('secondary_electron_scale_' + str(i)).value for i
                                                  in range(len(secondary_electron_scale_values))]
         lmfit_dk = result.params.get('dk').value
@@ -298,12 +309,13 @@ class Fitter:
                 plt.title("momentum: " + str(self.k[ki]))
                 plt.plot(low_noise_ws[i], low_noise_slices[i], label='data')
                 local_scale = get_degree_polynomial(len(scale_values))(self.k[ki], *lmfit_scale_params)
-                local_T = get_degree_polynomial(len(T_values))(self.k[ki], *lmfit_T_params)
+                local_T0 = get_degree_polynomial(len(T0_values))(self.k[ki], *lmfit_T0_params)
+                local_T1 = get_degree_polynomial(len(T1_values))(self.k[ki], *lmfit_T1_params)
                 local_secondary_electron_scale = get_degree_polynomial(len(secondary_electron_scale_values))(self.k[ki],
                                                                                                              *lmfit_secondary_electron_scale_params)
-                plt.plot(low_noise_ws[i], EDC_func_array[i](low_noise_ws[i], local_scale, local_T, lmfit_T0, lmfit_dk,
+                plt.plot(low_noise_ws[i], EDC_func_array[i](low_noise_ws[i], local_scale, local_T0, local_T1, lmfit_dk,
                                                             local_secondary_electron_scale, lmfit_q, lmfit_r,
                                                             lmfit_s, lmfit_a, lmfit_c, self.k[ki] - lmfit_k_error),
                          label='fit')
                 plt.show()
-        return lmfit_scale_params, lmfit_T_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, lmfit_a, lmfit_c, lmfit_k_error
+        return lmfit_scale_params, lmfit_T0_params, lmfit_T1_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, lmfit_a, lmfit_c, lmfit_k_error

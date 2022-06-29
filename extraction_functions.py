@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array
-from spectral_functions import A_BCS, A_BCS_2, A_BCS_3
+from spectral_functions import A_BCS, A_BCS_3
 
 
 def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, convolution_extension=None):
@@ -31,9 +31,10 @@ def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma,
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + s
     return return_array
 
-def test_EDC_array_with_SE(w_array, scale, T, T0, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+
+def EDC_array_with_SE(w_array, scale, T0, T1, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
                       convolution_extension=None):
-    return_array = test_EDC_array(w_array, scale, T, T0, dk, a, c, fixed_k, energy_conv_sigma, temp,
+    return_array = EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp,
                              convolution_extension=convolution_extension)
     # add in secondary electrons
     secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
@@ -42,68 +43,13 @@ def test_EDC_array_with_SE(w_array, scale, T, T0, dk, p, q, r, s, a, c, fixed_k,
     return return_array
 
 
-def test_EDC_array(w_array, scale, T, T0, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+def EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
     if convolution_extension is None:
         convolution_extension = int(
             energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
     temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-        A_BCS_3(fixed_k, temp_w_array, a, c, dk, T, T0) * n_vectorized(temp_w_array, temp), scale),
-                                      energy_conv_sigma)
-    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
-    return return_array
-
-
-def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
-                      convolution_extension=None):
-    """
-    EDC slice function with secondary electron contribution
-    :param w_array: energy array
-    :param scale: scaling factor
-    :param T:
-    :param dk:
-    :param p: SE scale
-    :param q: SE horizontal shift
-    :param r: SE steepness
-    :param s: SE vertical shift
-    :param a:
-    :param c:
-    :param fixed_k: momentum of EDC
-    :param energy_conv_sigma:
-    :param temp:
-    :param convolution_extension:
-    :return:
-    """
-    return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
-                             convolution_extension=convolution_extension)
-    # add in secondary electrons
-    secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
-    for i in range(len(w_array)):
-        return_array[i] = return_array[i] + secondary[i]
-    return return_array
-
-
-def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
-    """
-    EDC slice function
-    :param w_array: energy array
-    :param scale: scaling factor
-    :param T:
-    :param dk:
-    :param a:
-    :param c:
-    :param fixed_k: momentum of EDC
-    :param energy_conv_sigma:
-    :param temp:
-    :param convolution_extension:
-    :return:
-    """
-    if convolution_extension is None:
-        convolution_extension = int(
-            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
-    temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-        A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
+        A_BCS_3(fixed_k, temp_w_array, a, c, dk, T0, T1) * n_vectorized(temp_w_array, temp), scale),
                                       energy_conv_sigma)
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
     return return_array
