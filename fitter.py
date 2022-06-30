@@ -299,7 +299,6 @@ class Fitter:
         lmfit_a = result.params.get('a').value
         lmfit_c = result.params.get('c').value
         lmfit_k_error = result.params.get('k_error').value
-        lmfit_T0 = result.params.get('T0').value
 
         if plot_results:
             print("FINAL DK: ")
