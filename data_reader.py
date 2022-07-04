@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from extraction_functions import symmetrize_EDC
 from general import n, n_vectorized
 from spectral_functions import E
 
@@ -90,3 +91,25 @@ class DataReader:
             # plt.plot(zoomed_k, -E((zoomed_k - 0.01248904), 2568.30255, -21.0992210, 13.5027728))  # 0333
             # plt.plot(zoomed_k, 2568.30255 * (zoomed_k - 0.01248904) ** 2 - 21.0992210)
             plt.show()
+
+    def symmetrize_data(self, plot=True):
+        print(self.zoomed_w)
+        new_Z = []
+        for ki in range(len(self.zoomed_k)):
+            EDC = [self.zoomed_Z[i][ki] for i in range(len(self.zoomed_w))]
+            _, EDC = symmetrize_EDC(self.zoomed_w, EDC)
+            new_Z.append(EDC)
+        new_w, _ = symmetrize_EDC(self.zoomed_w, [self.zoomed_Z[i][0] for i in range(len(self.zoomed_w))])
+
+        self.zoomed_w = new_w
+        self.zoomed_Z = np.array(new_Z).T
+        if plot:
+            print(self.zoomed_w)
+            print(self.zoomed_Z)
+            plt.title("Raw Eugen data (Reduced Window)")
+
+            im = plt.imshow(self.zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
+                            extent=[min(self.zoomed_k), max(self.zoomed_k), min(self.zoomed_w), max(self.zoomed_w)])
+            plt.colorbar(im)
+            plt.show()
+

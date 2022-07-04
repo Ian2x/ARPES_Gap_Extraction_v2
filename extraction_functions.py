@@ -55,6 +55,29 @@ def EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp
     return return_array
 
 
+# def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+#                       convolution_extension=None):
+#     return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
+#                              convolution_extension=convolution_extension)
+#     # add in secondary electrons
+#     secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
+#     for i in range(len(w_array)):
+#         return_array[i] = return_array[i] + secondary[i]
+#     return return_array
+#
+#
+# def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+#     if convolution_extension is None:
+#         convolution_extension = int(
+#             energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+#     temp_w_array = extend_array(w_array, convolution_extension)
+#     temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+#         A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
+#                                       energy_conv_sigma)
+#     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
+#     return return_array
+
+
 def EDC_prep(curr_index, Z, w, min_fit_count, exclude_secondary=True):
     """
     Prepares relevant variables for EDC calculations
@@ -153,7 +176,7 @@ def symmetrize_EDC(axis_array, data_array):
 
     one_side_length = min(cropped_axis_array[0], math.fabs(cropped_axis_array[len(cropped_axis_array) - 1]))
     step_size = (2 * one_side_length) / len(cropped_axis_array)
-    new_axis_array = np.arange(one_side_length, -one_side_length-0.01, -step_size)
+    new_axis_array = np.arange(one_side_length, -one_side_length - 0.01, -step_size)
     new_data_array = np.zeros(len(new_axis_array))
 
     def interpolate_point(value):
@@ -162,8 +185,9 @@ def symmetrize_EDC(axis_array, data_array):
             if math.fabs(value - axis_array[i]) < 0.00001:
                 return data_array[i]
             elif (axis_array[i] < value < axis_array[i + 1]) or (axis_array[i] > value > axis_array[i + 1]):
-                total_distance = math.fabs(axis_array[i+1] - axis_array[i])
-                return data_array[i] * math.fabs(axis_array[i+1] - value) / total_distance + data_array[i+1] * math.fabs(axis_array[i] - value) / total_distance
+                total_distance = math.fabs(axis_array[i + 1] - axis_array[i])
+                return data_array[i] * math.fabs(axis_array[i + 1] - value) / total_distance + data_array[
+                    i + 1] * math.fabs(axis_array[i] - value) / total_distance
 
     for i in range(len(new_data_array)):
         new_data_array[i] = interpolate_point(new_axis_array[i]) + interpolate_point(-new_axis_array[i])

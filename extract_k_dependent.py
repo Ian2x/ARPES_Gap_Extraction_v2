@@ -38,7 +38,7 @@ class KDependentExtractor:
         scale_trajectory = np.zeros(z_width)
         T0_trajectory = np.zeros(z_width)
         T1_trajectory = np.zeros(z_width)
-        params = [1, 1, 1, 1500, -15, 0.1, 200]
+        params = [1, 1, 1, 1, 1500, -15, 0.1, 200]
         fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
         for i in fitting_range:
             if i == int(z_width / 2) - 1:
