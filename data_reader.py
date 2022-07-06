@@ -93,7 +93,6 @@ class DataReader:
             plt.show()
 
     def symmetrize_data(self, plot=True):
-        print(self.zoomed_w)
         new_Z = []
         for ki in range(len(self.zoomed_k)):
             EDC = [self.zoomed_Z[i][ki] for i in range(len(self.zoomed_w))]
@@ -104,9 +103,7 @@ class DataReader:
         self.zoomed_w = new_w
         self.zoomed_Z = np.array(new_Z).T
         if plot:
-            print(self.zoomed_w)
-            print(self.zoomed_Z)
-            plt.title("Raw Eugen data (Reduced Window)")
+            plt.title("Symmetrized data")
 
             im = plt.imshow(self.zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
                             extent=[min(self.zoomed_k), max(self.zoomed_k), min(self.zoomed_w), max(self.zoomed_w)])

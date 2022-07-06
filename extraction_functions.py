@@ -32,32 +32,9 @@ def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma,
     return return_array
 
 
-def EDC_array_with_SE(w_array, scale, T0, T1, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
-                      convolution_extension=None):
-    return_array = EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp,
-                             convolution_extension=convolution_extension)
-    # add in secondary electrons
-    secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
-    for i in range(len(w_array)):
-        return_array[i] = return_array[i] + secondary[i]
-    return return_array
-
-
-def EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
-    if convolution_extension is None:
-        convolution_extension = int(
-            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
-    temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-        A_BCS_3(fixed_k, temp_w_array, a, c, dk, T0, T1) * n_vectorized(temp_w_array, temp), scale),
-                                      energy_conv_sigma)
-    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
-    return return_array
-
-
-# def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+# def EDC_array_with_SE(w_array, scale, T0, T1, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
 #                       convolution_extension=None):
-#     return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
+#     return_array = EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp,
 #                              convolution_extension=convolution_extension)
 #     # add in secondary electrons
 #     secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
@@ -66,16 +43,43 @@ def EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp
 #     return return_array
 #
 #
-# def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+# def EDC_array(w_array, scale, T0, T1, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
 #     if convolution_extension is None:
 #         convolution_extension = int(
 #             energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
 #     temp_w_array = extend_array(w_array, convolution_extension)
 #     temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-#         A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
+#         A_BCS_3(fixed_k, temp_w_array, a, c, dk, T0, T1) * n_vectorized(temp_w_array, temp), scale),
 #                                       energy_conv_sigma)
 #     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
 #     return return_array
+
+
+def EDC_array_with_SE(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, temp,
+                      convolution_extension=None):
+    return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
+                             convolution_extension=convolution_extension)
+    # add in secondary electrons
+    secondary = secondary_electron_contribution_array(w_array, 0, 0, 0, s)
+
+    height = len(w_array)
+    symmetrized_array = np.zeros(len(return_array))
+    for i in range(height):
+        symmetrized_array[i] = return_array[i] + return_array[height-i-1] + secondary[i]
+        # return_array[i] = return_array[i] + secondary[i]
+    return symmetrized_array
+
+
+def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+    if convolution_extension is None:
+        convolution_extension = int(
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+        A_BCS(fixed_k, temp_w_array, a, c, dk, T), scale),
+                                      energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
+    return return_array
 
 
 def EDC_prep(curr_index, Z, w, min_fit_count, exclude_secondary=True):

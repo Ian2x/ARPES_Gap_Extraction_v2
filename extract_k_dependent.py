@@ -37,8 +37,7 @@ class KDependentExtractor:
         z_width = self.Z[0].size
         scale_trajectory = np.zeros(z_width)
         T0_trajectory = np.zeros(z_width)
-        T1_trajectory = np.zeros(z_width)
-        params = [1, 1, 1, 1, 1500, -15, 0.1, 200]
+        params = [1e+05, 10, 10, 100]
         fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
         for i in fitting_range:
             if i == int(z_width / 2) - 1:
@@ -52,15 +51,15 @@ class KDependentExtractor:
                 partial(EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
                         energy_conv_sigma=self.energy_conv_sigma, temp=self.temp), low_noise_w, low_noise_slice,
                 bounds=(
-                    [0, 0, 0, 0, 0, -np.inf, 0, -np.inf],
-                    [ONE_BILLION, np.inf, np.inf, 75, np.inf, 0, np.inf, np.inf]),
+                    [0, 0, 0, 0],
+                    [ONE_BILLION, 75, 75, np.inf]),
                 p0=params,
                 sigma=fitting_sigma,
                 maxfev=2000)
             scale_trajectory[i] = params[0]
             T0_trajectory[i] = params[1]
-            T1_trajectory[i] = params[2]
             if plot_fits:
+                plt.title(str(i))
                 plt.plot(low_noise_w, low_noise_slice)
                 plt.plot(low_noise_w,
                          EDC_array_with_SE(
@@ -70,7 +69,6 @@ class KDependentExtractor:
             print(i)
         KDependentExtractor.scale_trajectory = scale_trajectory
         KDependentExtractor.T0_trajectory = T0_trajectory
-        KDependentExtractor.T1_trajectory = T1_trajectory
         if print_results:
             print("Scale trajectory: ")
             scale_trajectory_string = ""
@@ -82,11 +80,6 @@ class KDependentExtractor:
             for i in range(T0_trajectory.size):
                 T0_trajectory_string += str(T0_trajectory[i]) + ", "
             print(T0_trajectory_string)
-            print("T1 trajectory: ")
-            T1_trajectory_string = ""
-            for i in range(T1_trajectory.size):
-                T1_trajectory_string += str(T1_trajectory[i]) + ", "
-            print(T1_trajectory_string)
 
     def get_secondary_electron_scale_trajectory(self, y_pos, plot=True):
         """
