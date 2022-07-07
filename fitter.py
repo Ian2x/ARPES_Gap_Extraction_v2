@@ -93,24 +93,24 @@ class Fitter:
             value = extract_value(temp)
             scale_values.append(value)
         # Read T params
-        T_values = []
+        T0_values = []
         while True:
-            if 'T_' not in temp:
+            if 'T0_' not in temp:
                 break
             value = extract_value(temp)
-            T_values.append(value)
+            T0_values.append(value)
             temp = data_file.readline()
         # Read secondary_electron_scale params
-        secondary_electron_scale_values = []
-        while True:
-            if 'secondary_electron_scale_' not in temp:
-                break
-            value = extract_value(temp)
-            secondary_electron_scale_values.append(value)
-            temp = data_file.readline()
+        # secondary_electron_scale_values = []
+        # while True:
+        #     if 'secondary_electron_scale_' not in temp:
+        #         break
+        #     value = extract_value(temp)
+        #     secondary_electron_scale_values.append(value)
+        #     temp = data_file.readline()
         dk = extract_value(temp)
-        q = extract_value(data_file.readline())
-        r = extract_value(data_file.readline())
+        # q = extract_value(data_file.readline())
+        # r = extract_value(data_file.readline())
         s = extract_value(data_file.readline())
         a = extract_value(data_file.readline())
         c = extract_value(data_file.readline())
@@ -120,17 +120,16 @@ class Fitter:
         width = len(k)
         Z_fit_inverse = np.zeros((width, height))
         scale_polynomial = get_degree_polynomial(len(scale_values))
-        T_polynomial = get_degree_polynomial(len(T_values))
-        secondary_electron_scale_polynomial = get_degree_polynomial(len(secondary_electron_scale_values))
+        T_polynomial = get_degree_polynomial(len(T0_values))
+        # secondary_electron_scale_polynomial = get_degree_polynomial(len(secondary_electron_scale_values))
         for i in range(width):
             local_k = k[i] - k_error
             local_scale = scale_polynomial(local_k, *scale_values)
-            local_T = T_polynomial(local_k, *T_values)
-            local_secondary_electron_scale = secondary_electron_scale_polynomial(local_k,
-                                                                                 *secondary_electron_scale_values)
+            local_T = T_polynomial(local_k, *T0_values)
+            # local_secondary_electron_scale = secondary_electron_scale_polynomial(local_k,
+            #                                                                      *secondary_electron_scale_values)
 
-            EDC = EDC_array_with_SE(w, local_scale, local_T, dk, local_secondary_electron_scale, q, r,
-                                    s, a, c, local_k, energy_conv_sigma, temperature)
+            EDC = EDC_array_with_SE(w, local_scale, local_T, dk, s, a, c, local_k, energy_conv_sigma, temperature)
             Z_fit_inverse[i] = EDC
         fitted_Z = np.array([list(i) for i in zip(*Z_fit_inverse)])
         plt.title("Fitted map")
@@ -212,7 +211,7 @@ class Fitter:
                 pars.add('T0_' + str(i), value=T0_values[i],
                          # min=T0_values[i] * 1000, max=T0_values[i] / 1000,
                          vary=should_vary_kdependent)
-        pars.add('dk', value=(0 if dk_0_fixed else self.dk_estimate), min=0, max=100, vary=(not dk_0_fixed))
+        pars.add('dk', value=(0 if dk_0_fixed else self.dk_estimate), min=-100, max=100, vary=(not dk_0_fixed))
         pars.add('s', value=s_estimate, vary=True)
         pars.add('a', value=self.a_estimate, min=min(self.a_estimate / 1.5, 1750), max=max(self.a_estimate * 1.5, 3000),
                  vary=should_vary_ac)

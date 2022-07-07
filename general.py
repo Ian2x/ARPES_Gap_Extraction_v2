@@ -285,6 +285,14 @@ def d10_polynomial(x, a, b, c, d, e, f, g, h, i, j):
     return a * x ** 9 + b * x ** 8 + c * x ** 7 + d * x ** 6 + e * x ** 5 + f * x ** 4 + g * x ** 3 + h * x ** 2 + i * x + j
 
 
+def d11_polynomial(x, a, b, c, d, e, f, g, h, i, j, k):
+    return a * x ** 10 + b * x ** 9 + c * x ** 8 + d * x ** 7 + e * x ** 6 + f * x ** 5 + g * x ** 4 + h * x ** 3 + i * x ** 2 + j * x + k
+
+
+def d12_polynomial(x, a, b, c, d, e, f, g, h, i, j, k, l):
+    return a * x ** 11 + b * x ** 10 + c * x ** 9 + d * x ** 8 + e * x ** 7 + f * x ** 6 + g * x ** 5 + h * x ** 4 + i * x ** 3 + j * x ** 2 + k * x + l
+
+
 def get_degree_polynomial(i):
     options = {1: d1_polynomial,
                2: d2_polynomial,
@@ -295,7 +303,9 @@ def get_degree_polynomial(i):
                7: d7_polynomial,
                8: d8_polynomial,
                9: d9_polynomial,
-               10: d10_polynomial}
+               10: d10_polynomial,
+               11: d11_polynomial,
+               12: d12_polynomial}
     return options[i]
 
 
@@ -326,4 +336,4 @@ def extend_array(array, one_side_extension):
 
 polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
                         d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
-                        d10_polynomial]
+                        d10_polynomial, d11_polynomial, d12_polynomial]

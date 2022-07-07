@@ -134,7 +134,7 @@ class KDependentExtractor:
         return inner_params, polynomial_function
 
     def get_polynomial_fit(self, curve, curve_name="", plot=True):
-        for i in range(8):
+        for i in range(len(polynomial_functions) - 2):
             inner_params, inner_pcov = scipy.optimize.curve_fit(polynomial_functions[i], self.k, curve)
             outer_params, outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 1], self.k, curve)
             outer_outer_params, outer_outer_pcov = scipy.optimize.curve_fit(polynomial_functions[i + 2], self.k, curve)
