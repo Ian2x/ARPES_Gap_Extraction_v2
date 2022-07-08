@@ -11,9 +11,10 @@ from general import ONE_BILLION, F_test, polynomial_functions
 class KDependentExtractor:
     # Optionally save scale/T/secondary_electron_scale trajectories to save time
     scale_trajectory = None
-    T0_trajectory = None
+    T_trajectory = None
     T1_trajectory = None
     secondary_electron_scale_trajectory = None
+    dk_trajectory = None
 
     def __init__(self, Z, w, k, initial_a_estimate, initial_c_estimate, energy_conv_sigma, temp, min_fit_count=1):
         self.scale_polynomial_degree = None
@@ -21,7 +22,7 @@ class KDependentExtractor:
         self.T1_polynomial_degree = None
         self.secondary_electron_scale_degree = None
         self.scale_polynomial_fit = None
-        self.T0_polynomial_fit = None
+        self.T_polynomial_fit = None
         self.T1_polynomial_fit = None
         self.secondary_electron_scale_fit = None
         self.Z = Z
@@ -33,10 +34,12 @@ class KDependentExtractor:
         self.temp = temp
         self.min_fit_count = min_fit_count
 
-    def get_scale_T_trajectory(self, print_results=True, plot_fits=False):
+    def get_kdependent_trajectory(self, print_results=True, plot_fits=False):
         z_width = self.Z[0].size
         scale_trajectory = np.zeros(z_width)
-        T0_trajectory = np.zeros(z_width)
+        T_trajectory = np.zeros(z_width)
+        SEC_trajectory = np.zeros(z_width)
+        dk_trajectory = np.zeros(z_width)
         params = [1e+05, 10, 10, 100]
         fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
         for i in fitting_range:
@@ -57,7 +60,9 @@ class KDependentExtractor:
                 sigma=fitting_sigma,
                 maxfev=2000)
             scale_trajectory[i] = params[0]
-            T0_trajectory[i] = params[1]
+            T_trajectory[i] = params[1]
+            dk_trajectory[i] = params[2]
+            SEC_trajectory[i] = params[3]
             if plot_fits:
                 plt.title(str(i))
                 plt.plot(low_noise_w, low_noise_slice)
@@ -68,18 +73,21 @@ class KDependentExtractor:
                 plt.show()
             print(i)
         KDependentExtractor.scale_trajectory = scale_trajectory
-        KDependentExtractor.T0_trajectory = T0_trajectory
+        KDependentExtractor.T_trajectory = T_trajectory
+        KDependentExtractor.dk_trajectory = dk_trajectory
+        KDependentExtractor.secondary_electron_scale_trajectory = SEC_trajectory
+
         if print_results:
             print("Scale trajectory: ")
             scale_trajectory_string = ""
             for i in range(scale_trajectory.size):
                 scale_trajectory_string += str(scale_trajectory[i]) + ", "
             print(scale_trajectory_string)
-            print("T0 trajectory: ")
-            T0_trajectory_string = ""
-            for i in range(T0_trajectory.size):
-                T0_trajectory_string += str(T0_trajectory[i]) + ", "
-            print(T0_trajectory_string)
+            print("T trajectory: ")
+            T_trajectory_string = ""
+            for i in range(T_trajectory.size):
+                T_trajectory_string += str(T_trajectory[i]) + ", "
+            print(T_trajectory_string)
 
     def get_secondary_electron_scale_trajectory(self, y_pos, plot=True):
         """
@@ -109,20 +117,12 @@ class KDependentExtractor:
             self.scale_trajectory, curve_name="scale", plot=plot)
         return inner_params, polynomial_function
 
-    def get_T0_polynomial_fit(self, plot=True):
-        if KDependentExtractor.T0_trajectory is None:
-            raise AttributeError("Uninitialized T0_trajectory.")
+    def get_T_polynomial_fit(self, plot=True):
+        if KDependentExtractor.T_trajectory is None:
+            raise AttributeError("Uninitialized T_trajectory.")
 
-        inner_params, polynomial_function, self.T0_polynomial_degree, self.T0_polynomial_fit = self.get_polynomial_fit(
-            self.T0_trajectory, curve_name="T0", plot=plot)
-        return inner_params, polynomial_function
-
-    def get_T1_polynomial_fit(self, plot=True):
-        if KDependentExtractor.T1_trajectory is None:
-            raise AttributeError("Uninitialized T1_trajectory.")
-
-        inner_params, polynomial_function, self.T1_polynomial_degree, self.T1_polynomial_fit = self.get_polynomial_fit(
-            self.T1_trajectory, curve_name="T1", plot=plot)
+        inner_params, polynomial_function, self.T0_polynomial_degree, self.T_polynomial_fit = self.get_polynomial_fit(
+            self.T_trajectory, curve_name="T", plot=plot)
         return inner_params, polynomial_function
 
     def get_secondary_electron_scale_polynomial_fit(self, plot=True):
@@ -160,17 +160,13 @@ class KDependentExtractor:
         raise RuntimeError("Unable to find optimal " + curve_name + " polynomial fit")
 
     def plot(self):
-        if self.scale_polynomial_fit is None or self.T0_polynomial_fit is None or self.T1_polynomial_fit is None:
-            raise NotImplementedError("Must get scale/T0/T1 polynomial fits before plotting")
+        if self.scale_polynomial_fit is None or self.T_polynomial_fit is None or self.T1_polynomial_fit is None:
+            raise NotImplementedError("Must get scale/T polynomial fits before plotting")
         plt.title("Scale")
         plt.plot(self.k, KDependentExtractor.scale_trajectory)
         plt.plot(self.k, self.scale_polynomial_fit)
         plt.show()
-        plt.title("T0")
-        plt.plot(self.k, KDependentExtractor.T0_trajectory)
-        plt.plot(self.k, self.T0_polynomial_fit)
-        plt.show()
-        plt.title("T1")
-        plt.plot(self.k, KDependentExtractor.T1_trajectory)
-        plt.plot(self.k, self.T1_polynomial_fit)
+        plt.title("T")
+        plt.plot(self.k, KDependentExtractor.T_trajectory)
+        plt.plot(self.k, self.T_polynomial_fit)
         plt.show()

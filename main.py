@@ -20,10 +20,10 @@ def run():
         show_results=True)
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
-    # data.getZoomedData(width=130, height=88, x_center=358, y_center=44)
-    # data.symmetrize_data()
-    # fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/Norman multiplied/0297 2 Step.txt", data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=True)
-    # Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w, 11570 - 21) # data points - variable
+    data.getZoomedData(width=130, height=88, x_center=358, y_center=44)
+    data.symmetrize_data()
+    fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/Norman multiplied/0289 1StepFit, 1StepSEC.txt", data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False)
+    Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w, 11570 - 28)  # data points - variable
     # quit()
 
     # Single EDC fit
@@ -41,26 +41,36 @@ def run():
 
     kde = KDependentExtractor(data.zoomed_Z, data.zoomed_w, data.zoomed_k, initial_a_estimate, initial_c_estimate,
                               energy_conv_sigma, temperature)
-    kde.get_scale_T_trajectory()
+    kde.get_kdependent_trajectory(plot_fits=True)
+    quit()
 
     # Scale:
     scale_values, _ = kde.get_scale_polynomial_fit()
 
     # T:
-    T0_values, _ = kde.get_T0_polynomial_fit()
+    T0_values, _ = kde.get_T_polynomial_fit()
 
-    initial_a_estimate = 3500
-    initial_c_estimate = -27
+    # Secondary electron:
+    # data.getZoomedData(width=145, height=100, x_center=356, y_center=70)
+    # kde.Z = data.zoomed_Z
+    # kde.k = data.zoomed_k
+    # kde.w = data.zoomed_w
+    # kde.get_secondary_electron_scale_trajectory(99)
+    secondary_electron_scale_values, _ = kde.get_secondary_electron_scale_polynomial_fit()
+    # quit()
+    quit()
+    # initial_a_estimate = 3500
+    # initial_c_estimate = -27
     # Perform initial a,c-fixed 2D fit
     fitter1 = Fitter(data.zoomed_Z, data.zoomed_k, data.zoomed_w, initial_a_estimate, initial_c_estimate,
                      initial_dk_estimate,
                      initial_kf_estimate, temperature, energy_conv_sigma, 1,
                      override_index_to_fit=range(0, len(data.zoomed_k))
                      )
-    lmfit_scale_params, lmfit_T0_params, lmfit_dk, lmfit_s, _, _, lmfit_k_error \
-        = fitter1.fit(scale_values, T0_values, kdependent_fixed=False, ac_fixed=True,
+    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, _, _, lmfit_k_error \
+        = fitter1.fit(scale_values, T0_values, secondary_electron_scale_values, kdependent_fixed=False, ac_fixed=False,
                       plot_results=False, dk_0_fixed=False)
-
+    quit()
     # Perform final 2D fit
     print("\nDOING SECOND FIT...\n")
     fitter2 = Fitter(data.zoomed_Z, data.zoomed_k, data.zoomed_w, initial_a_estimate, initial_c_estimate,
@@ -68,10 +78,10 @@ def run():
                      initial_kf_estimate, temperature, energy_conv_sigma, 1,
                      override_index_to_fit=range(0, len(data.zoomed_k)))
 
-    fitter2.fit(lmfit_scale_params, lmfit_T0_params, kdependent_fixed=False,
+    fitter2.fit(lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, kdependent_fixed=False,
                 ac_fixed=False,
-                plot_results=False, s_estimate=lmfit_s.item(),
-                k_error_estimate=lmfit_k_error.item(), dk_0_fixed=False)
+                plot_results=False,
+                dk_0_fixed=False, k_error_estimate=lmfit_k_error.item())
 
 if __name__ == '__main__':
     run()
