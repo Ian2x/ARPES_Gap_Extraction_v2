@@ -55,29 +55,58 @@ def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma,
 #     return return_array
 
 
-def EDC_array_with_SE(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, temp,
-                      convolution_extension=None):
-    return_array = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
-                             convolution_extension=convolution_extension)
+def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, temp,
+                      convolution_extension=None, symmetrized=False, flat_SEC=False):
+    """
+    EDC slice function with secondary electron contribution
+    :param w_array: energy array
+    :param scale: scaling factor
+    :param T:
+    :param dk:
+    :param p: SE scale
+    :param q: SE horizontal shift
+    :param r: SE steepness
+    :param s: SE vertical shift
+    :param a:
+    :param c:
+    :param fixed_k: momentum of EDC
+    :param energy_conv_sigma:
+    :param temp:
+    :param convolution_extension:
+    :return:
+    """
+    base = EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp,
+                     convolution_extension=convolution_extension, symmetrized=symmetrized)
+
     # add in secondary electrons
-    secondary = secondary_electron_contribution_array(w_array, 0, 0, 0, s)
+    if flat_SEC:
+        secondary = np.full(len(w_array), p)
+    else:
+        secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
 
     height = len(w_array)
-    symmetrized_array = np.zeros(len(return_array))
+    result = np.zeros(len(base))
     for i in range(height):
-        symmetrized_array[i] = return_array[i] + return_array[height-i-1] + secondary[i]
-        # return_array[i] = return_array[i] + secondary[i]
-    return symmetrized_array
+        result[i] = base[i] + secondary[i]
+        if symmetrized:
+            result[i] += base[height - i - 1] + secondary[height - i - 1]
+    return result
 
 
-def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None):
+def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None,
+              symmetrized=False):
     if convolution_extension is None:
         convolution_extension = int(
             energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-        A_BCS(fixed_k, temp_w_array, a, c, dk, T), scale),
-                                      energy_conv_sigma)
+    if symmetrized:
+        temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+            A_BCS(fixed_k, temp_w_array, a, c, dk, T), scale),
+                                          energy_conv_sigma)
+    else:
+        temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+            A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
+                                          energy_conv_sigma)
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
     return return_array
 

@@ -1,17 +1,20 @@
+from functools import partial
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
-from general import lorentz_form_with_secondary_electrons
+from general import lorentz_form_with_secondary_electrons, reduced_chi
 
 
-def extract_ac(Z, k, w, show_results=False):
+def extract_ac(Z, k, w, temp, show_results=False, plot_fits=False):
     """
     Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
     there a k-offset is detected
     :param Z:
     :param k:
     :param w:
+    :param temp:
     :param show_results:
     :param fix_k: Adjust k if a k-offset is detected
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
@@ -24,19 +27,32 @@ def extract_ac(Z, k, w, show_results=False):
     super_state_trajectory[0] = params[1]
 
     fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
+    avgRedchi = 0
     for i in fitting_range:  # width
         if i == int(z_width / 2) - 1:
             save_params = params
         if i == int(z_width / 2) + 1:
             params = save_params
         try:
-            params, pcov = scipy.optimize.curve_fit(lorentz_form_with_secondary_electrons, w, inv_Z[i], p0=params,
+            simpleEDC = partial(lorentz_form_with_secondary_electrons, temp=temp)
+            params, pcov = scipy.optimize.curve_fit(simpleEDC, w, inv_Z[i], p0=params,
                                                     bounds=([0, -70, 0, 0, -70, 0, 0],
-                                                            [np.inf, 0, np.inf, np.inf, 0, 1, np.inf]))
+                                                            [np.inf, 20, np.inf, np.inf, 0, 1, np.inf]))
+            redchi = reduced_chi(inv_Z[i], simpleEDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
+            avgRedchi+=redchi
+            if plot_fits:
+                plt.title(str(i))
+                plt.plot(w, inv_Z[i])
+                plt.plot(w,
+                         simpleEDC(
+                             w, *params))
+                plt.show()
         except RuntimeError:
             print('ERROR: Extract ac failed on index ' + str(i))
             quit()
         super_state_trajectory[i] = params[1]
+    avgRedchi/=z_width
+    print(f"Average redchi: {avgRedchi}")
 
     def trajectory_form(x, a, c, dk, k_error):
         return -((a * (x - k_error) ** 2 + c) ** 2 + dk ** 2) ** 0.5
@@ -46,6 +62,8 @@ def extract_ac(Z, k, w, show_results=False):
                                             bounds=(
                                                 [0, -np.inf, 0, -0.03],
                                                 [np.inf, 0, np.inf, 0.03]))
+    p_sigma = np.sqrt(np.diag(pcov))
+
     initial_a_estimate, initial_c_estimate, initial_dk_estimate, k_error = params
 
     initial_kf_estimate = (-initial_c_estimate / initial_a_estimate) ** 0.5
@@ -54,6 +72,8 @@ def extract_ac(Z, k, w, show_results=False):
     if show_results:
         print("INITIAL AC PARAMS [a, c, dk, k shift]:")
         print(params)
+        print("ERRORS:")
+        print(p_sigma)
         print("\nINITIAL KF ESTIMATE:")
         print(str(initial_kf_estimate) + "\n")
         plt.title("Initial AC extraction and k error calculation")

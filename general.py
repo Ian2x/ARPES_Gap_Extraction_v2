@@ -212,8 +212,8 @@ def lorentz_form(x, a, b, c, d):
     return a * c / ((x - b) ** 2 + c ** 2) + d
 
 
-def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s):
-    lorentz = lorentz_form(x, a, b, c, 0)
+def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
+    lorentz = lorentz_form(x, a, b, c, 0) * n_vectorized(x, temp)
     secondary = secondary_electron_contribution_array(x, p, q, r, s)
     output = np.zeros(len(x))
     for i in range(len(x)):
@@ -337,3 +337,9 @@ def extend_array(array, one_side_extension):
 polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
                         d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
                         d10_polynomial, d11_polynomial, d12_polynomial]
+
+def reject_outliers(data, m = 2.):
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    s = d/mdev if mdev else 0.
+    return data[s<m]

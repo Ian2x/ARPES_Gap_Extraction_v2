@@ -1,3 +1,4 @@
+import random
 from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,13 +35,13 @@ class KDependentExtractor:
         self.temp = temp
         self.min_fit_count = min_fit_count
 
-    def get_kdependent_trajectory(self, print_results=True, plot_fits=False):
+    def get_kdependent_trajectory(self, print_results=False, plot_fits=False):
         z_width = self.Z[0].size
         scale_trajectory = np.zeros(z_width)
         T_trajectory = np.zeros(z_width)
         SEC_trajectory = np.zeros(z_width)
         dk_trajectory = np.zeros(z_width)
-        params = [1e+05, 10, 10, 100]
+        params = [1, 1, 1, 1500, -15, 0.1, 200]
         fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
         for i in fitting_range:
             if i == int(z_width / 2) - 1:
@@ -49,16 +50,18 @@ class KDependentExtractor:
                 params = save_params
             low_noise_w, low_noise_slice, fitting_sigma, points_in_fit, fit_start_index, fit_end_index = \
                 EDC_prep(i, self.Z, self.w, self.min_fit_count, exclude_secondary=False)
-
-            params, pcov = scipy.optimize.curve_fit(
-                partial(EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
-                        energy_conv_sigma=self.energy_conv_sigma, temp=self.temp), low_noise_w, low_noise_slice,
-                bounds=(
-                    [0, 0, 0, 0],
-                    [ONE_BILLION, 75, 75, np.inf]),
-                p0=params,
-                sigma=fitting_sigma,
-                maxfev=2000)
+            try:
+                params, pcov = scipy.optimize.curve_fit(
+                    partial(EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
+                            energy_conv_sigma=self.energy_conv_sigma, temp=self.temp, flat_SEC=False), low_noise_w, low_noise_slice,
+                    bounds=(
+                        [0, 0, 0, 0, -np.inf, 0, -np.inf],
+                        [ONE_BILLION, 75, 75, np.inf, 0, np.inf, np.inf]),
+                    p0=params,
+                    sigma=fitting_sigma,
+                    maxfev=2000)
+            except RuntimeError:
+                print("Optimal parameters not found, skipping...")
             scale_trajectory[i] = params[0]
             T_trajectory[i] = params[1]
             dk_trajectory[i] = params[2]
@@ -69,7 +72,7 @@ class KDependentExtractor:
                 plt.plot(low_noise_w,
                          EDC_array_with_SE(
                              low_noise_w, *params, self.initial_a_estimate, self.initial_c_estimate, self.k[i],
-                             self.energy_conv_sigma, self.temp))
+                             self.energy_conv_sigma, self.temp, flat_SEC=False))
                 plt.show()
             print(i)
         KDependentExtractor.scale_trajectory = scale_trajectory
@@ -88,6 +91,16 @@ class KDependentExtractor:
             for i in range(T_trajectory.size):
                 T_trajectory_string += str(T_trajectory[i]) + ", "
             print(T_trajectory_string)
+            print("dk trajectory: ")
+            dk_trajectory_string = ""
+            for i in range(dk_trajectory.size):
+                dk_trajectory_string += str(dk_trajectory[i]) + ", "
+            print(dk_trajectory_string)
+            print("SEC trajectory: ")
+            SEC_trajectory_string = ""
+            for i in range(SEC_trajectory.size):
+                SEC_trajectory_string += str(SEC_trajectory[i]) + ", "
+            print(SEC_trajectory_string)
 
     def get_secondary_electron_scale_trajectory(self, y_pos, plot=True):
         """
@@ -150,7 +163,7 @@ class KDependentExtractor:
             critical_value = scipy.stats.f.ppf(q=1 - sig_lvl, dfn=1, dfd=len(curve) - (i + 2))
             F_statistic_2 = F_test(curve, inner_fit, i + 1, outer_outer_fit, i + 3, np.ones(len(curve)), len(curve))
             critical_value_2 = scipy.stats.f.ppf(q=1 - sig_lvl, dfn=2, dfd=len(curve) - (i + 3))
-            if F_statistic < critical_value and F_statistic_2 < critical_value_2:
+            if (F_statistic < critical_value and F_statistic_2 < critical_value_2) or (np.isclose(outer_params[0], 1) and np.isclose(outer_outer_params[0], 1)):
                 print(F_statistic, critical_value)
                 print("Optimal " + curve_name + " polynomial is of degree: " + str(i + 1))
                 print("Fitted " + curve_name + " parameters are: " + str(inner_params))
