@@ -215,10 +215,10 @@ def lorentz_form(x, a, b, c, d):
 def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
     lorentz = lorentz_form(x, a, b, c, 0) * n_vectorized(x, temp)
     secondary = secondary_electron_contribution_array(x, p, q, r, s)
-    output = np.zeros(len(x))
-    for i in range(len(x)):
-        output[i] = lorentz[i] + secondary[i]
-    return output
+    # output = np.zeros(len(x))
+    # for i in range(len(x)):
+    #     output[i] = lorentz[i] + secondary[i]
+    return lorentz+secondary
 
 
 def parabola(x, a, b, c):

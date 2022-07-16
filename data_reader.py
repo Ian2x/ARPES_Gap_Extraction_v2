@@ -57,8 +57,8 @@ class DataReader:
         :param plot:
         :return:
         """
-        height_offset = int(y_center - 0.5 * height)
-        width_offset = int(x_center - 0.5 * width)
+        height_offset = round(y_center - 0.5 * height)
+        width_offset = round(x_center - 0.5 * width)
 
         zoomed_k = np.zeros(width)
         zoomed_w = np.zeros(height)
