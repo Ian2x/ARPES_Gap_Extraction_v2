@@ -32,17 +32,15 @@ def run():
         show_results=True,
         plot_fits=False
     )
-    quit()
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
-    # data.getZoomedData(width=115, height=88, x_center=358, y_center=44)
-    # data.symmetrize_data()
-    # fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/Norman multiplied/Set 1/0300 - 1 Step, Flat SEC.txt",
-    #                                    data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
-    #                                    symmetrized=True)
-    # Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
-    #                           10235 - 26)  # data points - variable
-    # quit()
+    data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
+    fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/test.txt",
+                                       data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
+                                       symmetrized=False)
+    Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
+                              16100 - 21)  # data points - variable
+    quit()
 
     # Single EDC fit
     # data.getZoomedData(width=140, height=36, x_center=360, y_center=45)
@@ -58,7 +56,7 @@ def run():
 
     kde = KDependentExtractor(data.zoomed_Z, data.zoomed_w, data.zoomed_k, initial_a_estimate, initial_c_estimate,
                               energy_conv_sigma, temperature)
-    kde.get_kdependent_trajectory(print_results=True, plot_fits=False)
+    kde.get_kdependent_trajectory(print_results=True, plot_fits=True)
 
     test = np.abs(kde.dk_trajectory)
     test = reject_outliers(test)
@@ -74,50 +72,18 @@ def run():
     secondary_electron_scale_values, _ = kde.get_secondary_electron_scale_polynomial_fit()
 
     # Zoom in for 2D fit
-    data.getZoomedData(width=115, height=88, x_center=358, y_center=44)
-    data.symmetrize_data()
+    data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
 
-    # initial_a_estimate = 3500
-    # initial_c_estimate = -27
     # Perform initial a,c-fixed 2D fit
     fitter1 = Fitter(data.zoomed_Z, data.zoomed_k, data.zoomed_w, initial_a_estimate, initial_c_estimate,
                      initial_dk_estimate,
                      initial_kf_estimate, temperature, energy_conv_sigma, 1,
                      override_index_to_fit=range(0, len(data.zoomed_k))
                      )
-    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, _, _, lmfit_k_error \
-        = fitter1.fit(scale_values, T0_values, secondary_electron_scale_values, scale_fixed=False, T_fixed=True,
-                      SEC_fixed=True, ac_fixed=False,
+    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, _, _, lmfit_k_error \
+        = fitter1.fit(scale_values, T0_values, secondary_electron_scale_values, scale_fixed=False, T_fixed=False,
+                      SEC_fixed=False, ac_fixed=False,
                       plot_results=False, dk_0_fixed=False)
-
-    # Perform second 2D fit
-    print("\nDOING SECOND FIT...\n")
-    fitter2 = Fitter(data.zoomed_Z, data.zoomed_k, data.zoomed_w, initial_a_estimate, initial_c_estimate,
-                     lmfit_dk if type(lmfit_dk) == int else lmfit_dk.item(),
-                     initial_kf_estimate, temperature, energy_conv_sigma, 1,
-                     override_index_to_fit=range(0, len(data.zoomed_k)))
-
-    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, _, _, lmfit_k_error \
-        = fitter2.fit(lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, scale_fixed=True,
-                      T_fixed=False,
-                      SEC_fixed=True,
-                      ac_fixed=False,
-                      plot_results=False,
-                      dk_0_fixed=False, k_error_estimate=lmfit_k_error.item())
-
-    # Perform third 2D fit
-    print("\nDOING THIRD FIT...\n")
-    fitter3 = Fitter(data.zoomed_Z, data.zoomed_k, data.zoomed_w, initial_a_estimate, initial_c_estimate,
-                     lmfit_dk if type(lmfit_dk) == int else lmfit_dk.item(),
-                     initial_kf_estimate, temperature, energy_conv_sigma, 1,
-                     override_index_to_fit=range(0, len(data.zoomed_k)))
-
-    fitter3.fit(lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, scale_fixed=False,
-                T_fixed=False,
-                SEC_fixed=True,
-                ac_fixed=False,
-                plot_results=False,
-                dk_0_fixed=False, k_error_estimate=lmfit_k_error.item())
 
 
 if __name__ == '__main__':
