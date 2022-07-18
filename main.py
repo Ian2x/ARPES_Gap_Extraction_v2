@@ -34,13 +34,12 @@ def run():
     )
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
-    data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
-    fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/test.txt",
-                                       data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
-                                       symmetrized=False)
-    Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
-                              16100 - 21)  # data points - variable
-    quit()
+    # data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
+    # fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/test.txt",
+    #                                    data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
+    #                                    symmetrized=False)
+    # Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
+    #                           16100 - 21)  # data points - variable
 
     # Single EDC fit
     # data.getZoomedData(width=140, height=36, x_center=360, y_center=45)
@@ -80,7 +79,7 @@ def run():
                      initial_kf_estimate, temperature, energy_conv_sigma, 1,
                      override_index_to_fit=range(0, len(data.zoomed_k))
                      )
-    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, _, _, lmfit_k_error \
+    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, _, _, lmfit_k_error \
         = fitter1.fit(scale_values, T0_values, secondary_electron_scale_values, scale_fixed=False, T_fixed=False,
                       SEC_fixed=False, ac_fixed=False,
                       plot_results=False, dk_0_fixed=False)

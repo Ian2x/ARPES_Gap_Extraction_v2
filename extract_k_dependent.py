@@ -5,7 +5,7 @@ import numpy as np
 import scipy.optimize
 import scipy.stats
 
-from extraction_functions import EDC_prep, EDC_array_with_SE, test_EDC_array_with_SE
+from extraction_functions import EDC_prep, EDC_array_with_SE
 from general import ONE_BILLION, F_test, polynomial_functions
 
 
@@ -41,7 +41,7 @@ class KDependentExtractor:
         T_trajectory = np.zeros(z_width)
         SEC_trajectory = np.zeros(z_width)
         dk_trajectory = np.zeros(z_width)
-        params = [1, 1, 1, 1500, 0.1, 200]
+        params = [1, 1, 1, 1500, -10, 0.1, 200]
         fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
         for i in fitting_range:
             if i == int(z_width / 2) - 1:
@@ -52,11 +52,11 @@ class KDependentExtractor:
                 EDC_prep(i, self.Z, self.w, self.min_fit_count, exclude_secondary=False)
             try:
                 params, pcov = scipy.optimize.curve_fit(
-                    partial(test_EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
+                    partial(EDC_array_with_SE, a=self.initial_a_estimate, c=self.initial_c_estimate, fixed_k=self.k[i],
                             energy_conv_sigma=self.energy_conv_sigma, temp=self.temp), low_noise_w, low_noise_slice,
                     bounds=(
-                        [0, 0, 0, 0, 0, -np.inf],
-                        [ONE_BILLION, 75, 75, np.inf, np.inf, np.inf]),
+                        [0, 0, 0, 0, -np.inf, 0, -np.inf],
+                        [ONE_BILLION, 75, 75, np.inf, 0, np.inf, np.inf]),
                     p0=params,
                     sigma=fitting_sigma,
                     maxfev=2000)
@@ -70,7 +70,7 @@ class KDependentExtractor:
                 plt.title(str(i))
                 plt.plot(low_noise_w, low_noise_slice)
                 plt.plot(low_noise_w,
-                         test_EDC_array_with_SE(
+                         EDC_array_with_SE(
                              low_noise_w, *params, self.initial_a_estimate, self.initial_c_estimate, self.k[i],
                              self.energy_conv_sigma, self.temp))
                 plt.show()
