@@ -1,6 +1,8 @@
 import numpy as np
 import math
 
+from scipy.interpolate import interp1d
+
 from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array
 from spectral_functions import A_BCS, A_BCS_2, A_BCS_3
 
@@ -210,15 +212,18 @@ def symmetrize_EDC(axis_array, data_array):
     new_axis_array = np.arange(one_side_length, -one_side_length-0.01, -step_size)
     new_data_array = np.zeros(len(new_axis_array))
 
-    def interpolate_point(value):
-        # Assumes value is greater than smallest axis_array value, and smaller than largest axis_array value
-        for i in range(len(axis_array)):
-            if math.fabs(value - axis_array[i]) < 0.00001:
-                return data_array[i]
-            elif (axis_array[i] < value < axis_array[i + 1]) or (axis_array[i] > value > axis_array[i + 1]):
-                total_distance = math.fabs(axis_array[i+1] - axis_array[i])
-                return data_array[i] * math.fabs(axis_array[i+1] - value) / total_distance + data_array[i+1] * math.fabs(axis_array[i] - value) / total_distance
+    f = interp1d(axis_array, data_array, kind='quadratic')
+    return f(new_axis_array), new_axis_array
 
-    for i in range(len(new_data_array)):
-        new_data_array[i] = interpolate_point(new_axis_array[i]) + interpolate_point(-new_axis_array[i])
-    return new_axis_array, new_data_array
+    # def interpolate_point(value):
+    #     # Assumes value is greater than smallest axis_array value, and smaller than largest axis_array value
+    #     for i in range(len(axis_array)):
+    #         if math.fabs(value - axis_array[i]) < 0.00001:
+    #             return data_array[i]
+    #         elif (axis_array[i] < value < axis_array[i + 1]) or (axis_array[i] > value > axis_array[i + 1]):
+    #             total_distance = math.fabs(axis_array[i+1] - axis_array[i])
+    #             return data_array[i] * math.fabs(axis_array[i+1] - value) / total_distance + data_array[i+1] * math.fabs(axis_array[i] - value) / total_distance
+    #
+    # for i in range(len(new_data_array)):
+    #     new_data_array[i] = interpolate_point(new_axis_array[i]) + interpolate_point(-new_axis_array[i])
+    # return new_axis_array, new_data_array
