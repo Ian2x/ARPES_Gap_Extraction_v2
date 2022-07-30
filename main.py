@@ -37,13 +37,13 @@ def run():
     )
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
-    data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
-    fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/test.txt",
-                                       data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
-                                       symmetrized=False)
-    Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
-                              16100 - 21)  # data points - variable
-    quit()
+    # data.getZoomedData(width=115, height=140, x_center=358, y_center=70)
+    # fitted_map = Fitter.get_fitted_map(r"/Users/ianhu/Documents/ARPES/test.txt",
+    #                                    data.zoomed_k, data.zoomed_w, energy_conv_sigma, temperature, second_fit=False,
+    #                                    symmetrized=False)
+    # Fitter.relative_error_map(data.zoomed_Z, fitted_map, data.zoomed_k, data.zoomed_w,
+    #                           16100 - 21)  # data points - variable
+    # quit()
 
     # Single EDC fit
     # data.getZoomedData(width=140, height=36, x_center=360, y_center=45)
