@@ -288,4 +288,4 @@ class Fitter:
                                                             lmfit_s, lmfit_a, lmfit_c, self.k[ki] - lmfit_k_error),
                          label='fit')
                 plt.show()
-        return lmfit_scale_params, lmfit_T_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, lmfit_a, lmfit_c, lmfit_k_error
+        return lmfit_scale_params, lmfit_T_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, lmfit_a, lmfit_c, lmfit_k_error, result

@@ -1,3 +1,6 @@
+import os
+
+import lmfit
 import numpy as np
 
 from data_reader import DataReader
@@ -80,10 +83,24 @@ def run():
                      initial_kf_estimate, temperature, energy_conv_sigma, 1,
                      override_index_to_fit=range(0, len(data.zoomed_k))
                      )
-    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, _, _, lmfit_k_error \
+    lmfit_scale_params, lmfit_T0_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_r, lmfit_s, _, _, lmfit_k_error, result \
         = fitter1.fit(scale_values, T0_values, secondary_electron_scale_values, scale_fixed=False, T_fixed=False,
                       SEC_fixed=False, ac_fixed=False,
                       plot_results=False, dk_0_fixed=False)
+
+    ##################################################
+    # SAVE TO FILES
+    ##################################################
+
+    script_dir = os.path.dirname(__file__)
+    rel_path = f"BackgroundAtW=0-{temperature}K.txt"
+    abs_file_path = os.path.join(script_dir, rel_path)
+
+    file = open(abs_file_path, "w+")
+
+    file.write(lmfit.fit_report(result))
+
+    file.close()
 
 
 if __name__ == '__main__':
