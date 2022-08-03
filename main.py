@@ -8,10 +8,10 @@ from general import reject_outliers
 
 def run():
     # Detector settings
-    temperature = 67.94
+    temperature = 37.30
     energy_conv_sigma = 8 / 2.35482004503
     data = DataReader(
-        fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0306_nL.dat", plot=False)
+        fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0320_nL.dat", plot=False)
     maxWidth = 140
     minWidth = 90
     data.getZoomedData(width=maxWidth, height=140, x_center=359, y_center=70, plot=True)
