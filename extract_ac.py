@@ -73,7 +73,9 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
         return residual
 
     dk_over_width = np.zeros(len(range(minWidth, maxWidth + 1, 2)))
+    dk_error_over_width = np.zeros(len(range(minWidth, maxWidth + 1, 2)))
     redchi_over_width = np.zeros(len(range(minWidth, maxWidth + 1, 2)))
+    kf_over_width = np.zeros(len(range(minWidth, maxWidth + 1, 2)))
 
     for i, width in enumerate(range(minWidth, maxWidth + 1, 2)):
         start = round((maxWidth - width) / 2)
@@ -83,7 +85,10 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
         mini = lmfit.Minimizer(fit_function, pars, nan_policy='omit', calc_covar=True)
         result = mini.minimize(method='leastsq')
         dk_over_width[i] = result.params.get('dk').value
+        dk_error_over_width[i] = result.params.get('dk').stderr
         redchi_over_width[i] = result.redchi
+        kf_over_width[i] = (-result.params.get('c') / result.params.get('a')) ** 0.5
+
         if plot_trajectory_fits:
             plt_Z = Z[:,start:end]
             im = plt.imshow(plt_Z, cmap=plt.cm.RdBu, aspect='auto',
@@ -97,37 +102,43 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
                      label='trajectory fit')
             plt.show()
 
+    dk_over_width = np.abs(dk_over_width)
     print("Gap size as a function of width:")
     print(repr(dk_over_width))
+    print("Gap error as a function of width:")
+    print(repr(dk_error_over_width))
     print("Reduced chi as a function of width:")
     print(repr(redchi_over_width))
+    print("kf as a function of width:")
+    print(repr(kf_over_width))
+
 
     return
 
-    fit_function = partial(calculate_residual, k=k)
-
-    mini = lmfit.Minimizer(fit_function, pars, nan_policy='omit', calc_covar=True)
-    result = mini.minimize(method='leastsq')
-    print(lmfit.fit_report(result))
-
-    initial_a_estimate = result.params.get('a').value
-    initial_c_estimate = result.params.get('c').value
-    initial_dk_estimate = result.params.get('dk').value
-    k_error = result.params.get('k_error').value
-
-    initial_kf_estimate = (-initial_c_estimate / initial_a_estimate) ** 0.5
-
-    new_k = k - k_error
-    if plot_trajectory_fits:
-        print("\nINITIAL KF ESTIMATE:")
-        print(str(initial_kf_estimate) + "\n")
-        plt.title("Initial AC extraction and k error calculation")
-        im = plt.imshow(Z, cmap=plt.cm.RdBu, aspect='auto',
-                        extent=[min(new_k), max(new_k), min(w), max(w)])  # drawing the function
-        plt.colorbar(im)
-        plt.plot(new_k, super_state_trajectory, label='trajectory')
-        plt.plot(new_k, trajectory_form(new_k, initial_a_estimate, initial_c_estimate, initial_dk_estimate, 0),
-                 label='trajectory fit')
-        plt.show()
-
-    return initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, k_error
+    # fit_function = partial(calculate_residual, k=k)
+    #
+    # mini = lmfit.Minimizer(fit_function, pars, nan_policy='omit', calc_covar=True)
+    # result = mini.minimize(method='leastsq')
+    # print(lmfit.fit_report(result))
+    #
+    # initial_a_estimate = result.params.get('a').value
+    # initial_c_estimate = result.params.get('c').value
+    # initial_dk_estimate = result.params.get('dk').value
+    # k_error = result.params.get('k_error').value
+    #
+    # initial_kf_estimate = (-initial_c_estimate / initial_a_estimate) ** 0.5
+    #
+    # new_k = k - k_error
+    # if plot_trajectory_fits:
+    #     print("\nINITIAL KF ESTIMATE:")
+    #     print(str(initial_kf_estimate) + "\n")
+    #     plt.title("Initial AC extraction and k error calculation")
+    #     im = plt.imshow(Z, cmap=plt.cm.RdBu, aspect='auto',
+    #                     extent=[min(new_k), max(new_k), min(w), max(w)])  # drawing the function
+    #     plt.colorbar(im)
+    #     plt.plot(new_k, super_state_trajectory, label='trajectory')
+    #     plt.plot(new_k, trajectory_form(new_k, initial_a_estimate, initial_c_estimate, initial_dk_estimate, 0),
+    #              label='trajectory fit')
+    #     plt.show()
+    #
+    # return initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, k_error

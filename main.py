@@ -4,28 +4,32 @@ from data_reader import DataReader
 from extract_ac import extract_ac
 from extract_k_dependent import KDependentExtractor
 from fitter import Fitter
-from general import reject_outliers
+from general import reject_outliers, k_as_index
+
 
 def run():
     # Detector settings
-    temperature = 37.30
+    temperature = 20.44
     energy_conv_sigma = 8 / 2.35482004503
     data = DataReader(
-        fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0320_nL.dat", plot=False)
+        fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat", plot=False)
     maxWidth = 140
     minWidth = 90
-    data.getZoomedData(width=maxWidth, height=140, x_center=359, y_center=70, plot=True)
+    data.getZoomedData(width=maxWidth, height=140, x_center=359, y_center=70, plot=False)
 
-    extract_ac(
-        data.zoomed_Z,
-        data.zoomed_k,
-        data.zoomed_w,
-        temperature,
-        minWidth,
-        maxWidth,
-        plot_trajectory_fits=False,
-        plot_EDC_fits=True
-    )
+    # extract_ac(
+    #     data.zoomed_Z,
+    #     data.zoomed_k,
+    #     data.zoomed_w,
+    #     temperature,
+    #     minWidth,
+    #     maxWidth,
+    #     plot_trajectory_fits=False,
+    #     plot_EDC_fits=False
+    # )
+    print(k_as_index(0.09, data.zoomed_k))
+    print(k_as_index(-0.09, data.zoomed_k))
+    print(k_as_index(0, data.zoomed_k))
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
     # data.getZoomedData(width=115, height=88, x_center=358, y_center=44)
