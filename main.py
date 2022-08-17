@@ -17,19 +17,19 @@ def run():
     minWidth = 90
     data.getZoomedData(width=maxWidth, height=140, x_center=359, y_center=70, plot=False)
 
-    # extract_ac(
-    #     data.zoomed_Z,
-    #     data.zoomed_k,
-    #     data.zoomed_w,
-    #     temperature,
-    #     minWidth,
-    #     maxWidth,
-    #     plot_trajectory_fits=False,
-    #     plot_EDC_fits=False
-    # )
-    print(k_as_index(0.09, data.zoomed_k))
-    print(k_as_index(-0.09, data.zoomed_k))
-    print(k_as_index(0, data.zoomed_k))
+    extract_ac(
+        data.zoomed_Z,
+        data.zoomed_k,
+        data.zoomed_w,
+        temperature,
+        minWidth,
+        maxWidth,
+        plot_trajectory_fits=False,
+        plot_EDC_fits=True
+    )
+    # print(k_as_index(0.09, data.zoomed_k))
+    # print(k_as_index(-0.09, data.zoomed_k))
+    # print(k_as_index(0, data.zoomed_k))
 
     # Plot previously fit from file (fitted map, error map, and reduced-chi)
     # data.getZoomedData(width=115, height=88, x_center=358, y_center=44)
