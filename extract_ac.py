@@ -9,6 +9,7 @@ from enum import Enum
 from extraction_functions import EDC_array_with_SE
 from general import lorentz_form_with_secondary_electrons, reduced_chi, lorentz_form, gaussian_form
 
+
 class FittingOrder(Enum):
     center_out = 0
     left_to_right = 1
@@ -26,8 +27,8 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
     :param temp:
     :param minWidth:
     :param maxWidth:
-    :param fullFunc:
-    :param hasBackground:
+    :param fullFunc: Whether to use full EDC function
+    :param hasBackground: (Only when not fullFunc) Whether to use lorentz with secondary electrons
     :param plot_trajectory_fits:
     :param plot_EDC_fits:
     :param fittingOrder:
@@ -65,7 +66,6 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
                 def EDC(x, scale, T, dk, p, a, c):
                     return EDC_array_with_SE(x, scale, T, dk, p, -1, -1, -1, a, c, k[i], energy_conv_sigma=fullFunc,
                                              temp=temp, flat_SEC=True)
-
                 bounds = ([0, 0, -np.inf, 0, 0, -np.inf], [np.inf, np.inf, np.inf, 10000, np.inf, 0])
             else:
                 if hasBackground:
@@ -74,7 +74,7 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
                 else:
                     EDC = partial(lorentz_form, temp=temp)
                     bounds = ([0, -70, 0, 0], [np.inf, 0, np.inf, 500000])
-            params, pcov = scipy.optimize.curve_fit(EDC, w, inv_Z[i], p0=params, bounds=bounds)
+            params, pcov = scipy.optimize.curve_fit(EDC, w, inv_Z[i], p0=params, bounds=bounds, ftol=1e+06*1.49012e-08)
             p_sigma = np.sqrt(np.diag(pcov))
             redchi = reduced_chi(inv_Z[i], EDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
             avgRedchi += redchi
@@ -86,8 +86,12 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
                          EDC(
                              w, *params))
                 plt.show()
-        except RuntimeError:
+        except RuntimeError as err:
             print('ERROR: Extract ac failed on index ' + str(i))
+            print(err)
+            plt.title("ERROR on " + str(k[i]))
+            plt.plot(w, inv_Z[i])
+            plt.show()
             quit()
         super_state_trajectory[i] = params[1]
         super_state_trajectory_errors[i] = p_sigma[1]

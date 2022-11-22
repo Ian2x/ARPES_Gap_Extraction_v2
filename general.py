@@ -217,7 +217,9 @@ def lorentz(x, a, b, c, d):
 
 
 def lorentz_form(x, a, b, c, d, temp):
-    return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
+    return (lorentz(x, a, b, c, d) + lorentz(-x, a, b, c, d)) * n_vectorized(x, temp)
+
+    # return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
     # return (lorentz(x, a, b, c, d) + lorentz(-x, a2, b, c, d)) * n_vectorized(x, temp)
 
 
