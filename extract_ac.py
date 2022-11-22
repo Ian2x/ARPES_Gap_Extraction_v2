@@ -5,10 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
-from general import lorentz_form_with_secondary_electrons, reduced_chi
+from enum import Enum
+from extraction_functions import EDC_array_with_SE
+from general import lorentz_form_with_secondary_electrons, reduced_chi, lorentz_form, gaussian_form
+
+class FittingOrder(Enum):
+    center_out = 0
+    left_to_right = 1
+    right_to_left = 2
 
 
-def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, plot_EDC_fits=False):
+def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=True, plot_trajectory_fits=False,
+               plot_EDC_fits=False, fittingOrder=FittingOrder.center_out):
     """
     Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
     there a k-offset is detected
@@ -18,35 +26,64 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
     :param temp:
     :param minWidth:
     :param maxWidth:
+    :param fullFunc:
+    :param hasBackground:
     :param plot_trajectory_fits:
+    :param plot_EDC_fits:
+    :param fittingOrder:
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
     """
     inv_Z = np.array([list(i) for i in zip(*Z)])
     z_width = Z[0].size
     super_state_trajectory = np.zeros(z_width)
     super_state_trajectory_errors = np.zeros(z_width)
-    params = [40000, -25, 20, 1500, -10, 0.1, 200]
+    if fullFunc:
+        params = [2e+07, 7, 5, 1, 1000, -54]
+    else:
+        if hasBackground:
+            # params = [4000000, 4000000, -50, 10, 25000, -60, 0.1, 0]  # For simulated
+            params = [40000, -25, 20, 1500, -10, 0.1, 200]  # For real
+        else:
+            params = [2000000, -50, 10, 0]
 
-    fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
+    if fittingOrder == FittingOrder.center_out:
+        fitting_range = list(range(int(z_width / 2), -1, -1)) + list(range(int(z_width / 2) + 1, z_width, 1))
+    elif fittingOrder == FittingOrder.left_to_right:
+        fitting_range = range(z_width)
+    elif fittingOrder == FittingOrder.right_to_left:
+        fitting_range = range(z_width - 1, 0 - 1, -1)
+
     avgRedchi = 0
     for i in fitting_range:  # width
-        if i == int(z_width / 2) - 1:
-            save_params = params
-        if i == int(z_width / 2) + 1:
-            params = save_params
+        if fittingOrder == FittingOrder.center_out:
+            if i == int(z_width / 2) - 1:
+                save_params = params
+            if i == int(z_width / 2) + 1:
+                params = save_params
         try:
-            simpleEDC = partial(lorentz_form_with_secondary_electrons, temp=temp)
-            params, pcov = scipy.optimize.curve_fit(simpleEDC, w, inv_Z[i], p0=params,
-                                                    bounds=([0, -70, 0, 0, -70, 0, 0],
-                                                            [np.inf, 20, np.inf, np.inf, 0, 1, np.inf]))
+            if fullFunc:
+                def EDC(x, scale, T, dk, p, a, c):
+                    return EDC_array_with_SE(x, scale, T, dk, p, -1, -1, -1, a, c, k[i], energy_conv_sigma=fullFunc,
+                                             temp=temp, flat_SEC=True)
+
+                bounds = ([0, 0, -np.inf, 0, 0, -np.inf], [np.inf, np.inf, np.inf, 10000, np.inf, 0])
+            else:
+                if hasBackground:
+                    EDC = partial(lorentz_form_with_secondary_electrons, temp=temp)
+                    bounds = ([0, -70, 0, 0, -70, 0, 0], [np.inf, 20, np.inf, np.inf, 0, 1, np.inf])
+                else:
+                    EDC = partial(lorentz_form, temp=temp)
+                    bounds = ([0, -70, 0, 0], [np.inf, 0, np.inf, 500000])
+            params, pcov = scipy.optimize.curve_fit(EDC, w, inv_Z[i], p0=params, bounds=bounds)
             p_sigma = np.sqrt(np.diag(pcov))
-            redchi = reduced_chi(inv_Z[i], simpleEDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
+            redchi = reduced_chi(inv_Z[i], EDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
             avgRedchi += redchi
-            if plot_EDC_fits and i < 10:
-                plt.title(str(i))
+            if plot_EDC_fits and i % (z_width / 10) == 0:
+                print(params)
+                plt.title(str(k[i]))
                 plt.plot(w, inv_Z[i])
                 plt.plot(w,
-                         simpleEDC(
+                         EDC(
                              w, *params))
                 plt.show()
         except RuntimeError:
@@ -89,8 +126,8 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
         redchi_over_width[i] = result.redchi
         kf_over_width[i] = (-result.params.get('c') / result.params.get('a')) ** 0.5
 
-        if plot_trajectory_fits:
-            plt_Z = Z[:,start:end]
+        if plot_trajectory_fits and i % 2 == 0:
+            plt_Z = Z[:, start:end]
             im = plt.imshow(plt_Z, cmap=plt.cm.RdBu, aspect='auto',
                             extent=[min(k[start:end]), max(k[start:end]), min(w), max(w)])  # drawing the function
             plt.title(f"Width of {width}")
@@ -111,7 +148,6 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, plot_trajectory_fits=False, pl
     print(repr(redchi_over_width))
     print("kf as a function of width:")
     print(repr(kf_over_width))
-
 
     return
 

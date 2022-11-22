@@ -174,7 +174,7 @@ def F_test(data, fit1, para1, fit2, para2, absolute_sigma_squared, n):
     return ((rss1 - rss2) / (para2 - para1)) / (rss2 / (n - para2))
 
 
-def gaussian_form_normalized(x, sigma, mu):
+def gaussian_normalized(x, sigma, mu):
     """
     Gaussian Function (Normalized)
     :param x: input
@@ -185,20 +185,24 @@ def gaussian_form_normalized(x, sigma, mu):
     return 1 / (sigma * (2 * math.pi) ** 0.5) * math.e ** (-0.5 * ((x - mu) / sigma) ** 2)
 
 
-def gaussian_form(x, a, b, c):
+def gaussian(x, a, b, c, d):
     """
     Gaussian Function (General)
     :param x: input
     :param a: scale
     :param b: horizontal shift
     :param c: width
+    :param d: vertical shift
     :return: Gaussian evaluated at input
     """
+    return a * math.e ** ((- (x - b) ** 2) / (2 * c ** 2)) + d
 
-    return a * math.e ** ((- (x - b) ** 2) / (2 * c ** 2))
+
+def gaussian_form(x, a, b, c, d, temp):
+    return (gaussian(x, a, b, c, d) + gaussian(-x, a, b, c, d)) * n_vectorized(x, temp)
 
 
-def lorentz_form(x, a, b, c, d):
+def lorentz(x, a, b, c, d):
     """
     Lorentz Function with vertical shift
     :param x: input
@@ -212,13 +216,13 @@ def lorentz_form(x, a, b, c, d):
     return a * c / ((x - b) ** 2 + c ** 2) + d
 
 
+def lorentz_form(x, a, b, c, d, temp):
+    return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
+    # return (lorentz(x, a, b, c, d) + lorentz(-x, a2, b, c, d)) * n_vectorized(x, temp)
+
+
 def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
-    lorentz = lorentz_form(x, a, b, c, 0) * n_vectorized(x, temp)
-    secondary = secondary_electron_contribution_array(x, p, q, r, s)
-    # output = np.zeros(len(x))
-    # for i in range(len(x)):
-    #     output[i] = lorentz[i] + secondary[i]
-    return lorentz+secondary
+    return lorentz_form(x, a, b, c, 0, temp) + secondary_electron_contribution_array(x, p, q, r, s)
 
 
 def parabola(x, a, b, c):

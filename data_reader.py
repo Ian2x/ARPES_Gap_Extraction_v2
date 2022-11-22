@@ -4,17 +4,69 @@ import numpy as np
 from extraction_functions import symmetrize_EDC
 from general import n, n_vectorized
 from spectral_functions import E
+from enum import Enum
+
+
+class FileType(Enum):
+    FAR_OFF_NODE = 0
+    NEAR_NODE = 1
+    SIMULATED = 2
 
 
 class DataReader:
-    def __init__(self, fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat", w_dim=201, k_dim=695, plot=True):
+    def __init__(self,
+                 fileName=r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat",
+                 plot=True, fileType=FileType.FAR_OFF_NODE):
+
+        # Handle simulated files
+        if fileType == FileType.SIMULATED:
+            Simulated_data_file = open(fileName, "r")
+            momentumAxis = ""
+            while not momentumAxis.startswith("Momentum_Axis_Scaling"):
+                momentumAxis = Simulated_data_file.readline()
+            k_start, k_step, k_end = momentumAxis[
+                                     momentumAxis.index(" = ") + 3:momentumAxis.index(" invAngstrom")].split(":")
+            self.full_k = np.arange(float(k_start), float(k_end) + float(k_step) / 2, float(k_step))
+            energyAxis = Simulated_data_file.readline()
+            w_start, w_step, w_end = energyAxis[energyAxis.index(" = ") + 3:energyAxis.index(" eV")].split(":")
+            self.full_w = np.arange(float(w_start), float(w_end) + float(w_step) / 2, float(w_step))
+            self.full_w = 1000 * np.flip(self.full_w)
+            w_dim = len(self.full_w)
+            k_dim = len(self.full_k)
+            while Simulated_data_file.readline() != '[Data]\n':
+                pass
+            Simulated_data_file.readline()
+            Simulated_data = np.zeros((w_dim, k_dim))
+
+            for i in range(k_dim):
+                temp = Simulated_data_file.readline()
+                temp_split = temp.split()
+                for j in range(w_dim):
+                    Simulated_data[w_dim - j - 1][k_dim - i - 1] = temp_split[j]  # fill in opposite
+            self.full_Z = Simulated_data
+            self.zoomed_w = None
+            self.zoomed_k = None
+            self.zoomed_Z = None
+            if plot:
+                plt.title("Raw Eugen data")
+                im = plt.imshow(Simulated_data, cmap=plt.cm.RdBu, aspect='auto',
+                                extent=[min(self.full_k), max(self.full_k), min(self.full_w), max(self.full_w)])  # drawing the function
+                plt.colorbar(im)
+                plt.show()
+            Simulated_data_file.close()
+            return
+
         Eugen_data_file = open(fileName, "r")
         Eugen_data_file.readline()  # skip blank starting line
         temp = Eugen_data_file.readline()  # energy?
         temp_split = temp.split()
 
-        w_dim = w_dim  # 401 for near node # 201 for far off node
-        k_dim = k_dim  # 690 for near node # 695 for far off node
+        if fileType == FileType.FAR_OFF_NODE:
+            w_dim = 201
+            k_dim = 695
+        elif fileType == FileType.NEAR_NODE:
+            w_dim = 401
+            k_dim = 690
 
         Eugen_data = np.zeros((w_dim, k_dim))
         k = np.zeros(k_dim)
@@ -24,8 +76,9 @@ class DataReader:
         self.full_w = np.flip(w)
 
         Eugen_data_file.readline()  # empty 0.0164694505526385 / 0.515261371488587
-        Eugen_data_file.readline()  # unfilled 0.513745070571566 (FOR FAR OFF NODE ONLY)
-        Eugen_data_file.readline()  # unfilled 0.512228769654545 (FOR FAR OFF NODE ONLY)
+        if fileType == FileType.FAR_OFF_NODE:
+            Eugen_data_file.readline()  # unfilled 0.513745070571566 (FOR FAR OFF NODE ONLY)
+            Eugen_data_file.readline()  # unfilled 0.512228769654545 (FOR FAR OFF NODE ONLY)
 
         for i in range(k_dim):
             temp = Eugen_data_file.readline()
@@ -109,4 +162,3 @@ class DataReader:
                             extent=[min(self.zoomed_k), max(self.zoomed_k), min(self.zoomed_w), max(self.zoomed_w)])
             plt.colorbar(im)
             plt.show()
-
