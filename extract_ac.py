@@ -7,7 +7,7 @@ import scipy.optimize
 
 from enum import Enum
 from extraction_functions import EDC_array_with_SE
-from general import lorentz_form_with_secondary_electrons, reduced_chi, lorentz_form, gaussian_form
+from general import lorentz_form_with_secondary_electrons, reduced_chi, lorentz_form
 
 
 class FittingOrder(Enum):
@@ -17,7 +17,7 @@ class FittingOrder(Enum):
 
 
 def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=True, plot_trajectory_fits=False,
-               plot_EDC_fits=False, fittingOrder=FittingOrder.center_out):
+               plot_EDC_fits=False, fittingOrder=FittingOrder.center_out, num_EDC_plots=10):
     """
     Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
     there a k-offset is detected
@@ -32,6 +32,7 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
     :param plot_trajectory_fits:
     :param plot_EDC_fits:
     :param fittingOrder:
+    :param num_EDC_plots
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
     """
     inv_Z = np.array([list(i) for i in zip(*Z)])
@@ -42,8 +43,8 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
         params = [2e+07, 7, 5, 1, 1000, -54]
     else:
         if hasBackground:
-            # params = [4000000, 4000000, -50, 10, 25000, -60, 0.1, 0]  # For simulated
-            params = [40000, -25, 20, 1500, -10, 0.1, 200]  # For real
+            params = [4000000, -50, 10, 25000, -60, 0.1, 0]  # For simulated
+            # params = [40000, -25, 20, 1500, -10, 0.1, 200]  # For real
         else:
             params = [2000000, -50, 10, 0]
 
@@ -78,7 +79,7 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
             p_sigma = np.sqrt(np.diag(pcov))
             redchi = reduced_chi(inv_Z[i], EDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
             avgRedchi += redchi
-            if plot_EDC_fits and i % (z_width / 10) == 0:
+            if plot_EDC_fits and i % (z_width / num_EDC_plots) == 0:
                 print(params)
                 plt.title(str(k[i]))
                 plt.plot(w, inv_Z[i])
@@ -119,8 +120,16 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
     kf_over_width = np.zeros(len(range(minWidth, maxWidth + 1, 2)))
 
     for i, width in enumerate(range(minWidth, maxWidth + 1, 2)):
-        start = round((maxWidth - width) / 2)
-        end = start + width
+        if fittingOrder == FittingOrder.center_out:
+            start = round((maxWidth - width) / 2)
+            end = start + width
+        elif fittingOrder == FittingOrder.right_to_left:
+            start = z_width - width
+            end = start + width
+        elif fittingOrder == FittingOrder.left_to_right:
+            start = 0
+            end = start + width
+
         fit_function = partial(calculate_residual, k=k[start:end], sst=super_state_trajectory[start:end],
                                sst_error=super_state_trajectory_errors[start:end])
         mini = lmfit.Minimizer(fit_function, pars, nan_policy='omit', calc_covar=True)
@@ -141,6 +150,7 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
                      trajectory_form(k[start:end], result.params.get('a').value, result.params.get('c').value,
                                      result.params.get('dk').value, result.params.get('k_error').value),
                      label='trajectory fit')
+            plt.ylim([min(w), max(w)])
             plt.show()
 
     dk_over_width = np.abs(dk_over_width)
