@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array
-from spectral_functions import A_BCS, A_BCS_3
+from spectral_functions import A_BCS, A_BCS_3, final_A_BCS
 
 
 def Norman_EDC_array(w_array, scale, T, dk, s, a, c, fixed_k, energy_conv_sigma, convolution_extension=None):
@@ -93,6 +93,15 @@ def EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_c
     return result
 
 
+def final_EDC_array_with_SE(w_array, scale, T, dk, p, q, r, s, loc, energy_conv_sigma, temp):
+    base = final_EDC_array(w_array, scale, T, dk, loc, energy_conv_sigma, temp)
+    secondary = secondary_electron_contribution_array(w_array, p, q, r, s)
+    result = np.zeros(len(base))
+    for i in range(len(w_array)):
+        result[i] = base[i] + secondary[i]
+    return result
+
+
 def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, convolution_extension=None,
               symmetrized=False):
     if convolution_extension is None:
@@ -107,6 +116,16 @@ def EDC_array(w_array, scale, T, dk, a, c, fixed_k, energy_conv_sigma, temp, con
         temp_array = energy_conv_to_array(temp_w_array, np.multiply(
             A_BCS(fixed_k, temp_w_array, a, c, dk, T) * n_vectorized(temp_w_array, temp), scale),
                                           energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
+    return return_array
+
+
+def final_EDC_array(w_array, scale, T, dk, loc, energy_conv_sigma, temp):
+    # return scale * final_A_BCS(w_array, loc, dk, T)
+    convolution_extension = int(energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+            final_A_BCS(temp_w_array, loc, dk, T) * n_vectorized(temp_w_array, temp), scale), energy_conv_sigma)
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)]
     return return_array
 

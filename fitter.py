@@ -7,7 +7,7 @@ import re
 
 import scipy
 
-from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC
+from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array
 from general import k_as_index, get_degree_polynomial
 
 
@@ -15,61 +15,61 @@ class Fitter:
 
     @staticmethod
     def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma):
-        # pars = lmfit.Parameters()
-        # pars.add('scale', value=60000, min=0, max=1000000)
-        # pars.add('T', value=20, min=0, max=30)
-        # pars.add('dk', value=0, min=-25, max=25)
-        # pars.add('s', value=1300, min=1000, max=2000, vary=True)
-        # pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
-        # pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
-        # # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
+        pars = lmfit.Parameters()
+        pars.add('scale', value=60000, min=0, max=1000000000)
+        pars.add('T', value=20, min=0, max=30)
+        pars.add('dk', value=0, min=-25, max=25)
+        pars.add('s', value=0, min=0, max=2000, vary=False)
+        pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
+        pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
+        # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
         low_noise_w = w
         low_noise_slice = [Z[i][kf_index] for i in range(len(w))]
         low_noise_w, low_noise_slice = symmetrize_EDC(low_noise_w, low_noise_slice)
-        # EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
-        #                    energy_conv_sigma=energy_conv_sigma)
-        #
-        # def calculate_residual(p):
-        #     EDC_residual = EDC_func(
-        #         np.asarray(low_noise_w), p['scale'], p['T'], p['dk'], p['s'], p['a'], p['c']) - low_noise_slice
-        #     weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
-        #     return weighted_EDC_residual
+        EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
+                           energy_conv_sigma=energy_conv_sigma)
 
-        # mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
-        # result = mini.minimize(method='leastsq')
-        # print(lmfit.fit_report(result))
-        # scale = result.params.get('scale').value
-        # T = result.params.get('T').value
-        # dk = result.params.get('dk').value
-        # s = result.params.get('s').value
-        # a = result.params.get('a').value
-        # c = result.params.get('c').value
-        # plt.title("Norman fit")
-        # plt.plot(low_noise_w, low_noise_slice, label='data')
-        # plt.plot(low_noise_w, EDC_func(low_noise_w, scale, T, dk, s, a, c), label='fit')
-        # plt.show()'
+        def calculate_residual(p):
+            EDC_residual = EDC_func(
+                np.asarray(low_noise_w), p['scale'], p['T'], p['dk'], p['s'], p['a'], p['c']) - low_noise_slice
+            weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
+            return weighted_EDC_residual
 
-        import cmath
-
-        def my_func(w, dk, T, T2, scale):
-            sig_gap_num = complex(dk * dk, 0)
-            if w > abs(dk) or w < -abs(dk):
-                gamma0 = abs(T) + abs(T2) * cmath.sqrt(w ** 2 - T2 ** 2) / abs(w)
-            else:
-                gamma0 = abs(T)
-            sig_gap_dom = complex(w, T2)
-            sig_gap = sig_gap_num / sig_gap_dom
-            sig = sig_gap - complex(0, 1) * gamma0
-            Green = scale / (w - sig)
-            return -Green.imag / np.pi
-
-        mfv = np.vectorize(my_func)  # dk, T, T2, scale
-        params, pcov = scipy.optimize.curve_fit(mfv, low_noise_w, low_noise_slice, p0=[5, 15, 0, 3e+05],
-                                                sigma=np.sqrt(low_noise_slice), maxfev=2000)
+        mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
+        result = mini.minimize(method='leastsq')
+        print(lmfit.fit_report(result))
+        scale = result.params.get('scale').value
+        T = result.params.get('T').value
+        dk = result.params.get('dk').value
+        s = result.params.get('s').value
+        a = result.params.get('a').value
+        c = result.params.get('c').value
+        plt.title("Norman fit")
         plt.plot(low_noise_w, low_noise_slice, label='data')
-        plt.plot(low_noise_w, mfv(low_noise_w, *params), label='fit')
+        plt.plot(low_noise_w, EDC_func(low_noise_w, scale, T, dk, s, a, c), label='fit')
         plt.show()
-        print(str(params[0]) + " +- " + str(np.sqrt(np.diag(pcov))[0]))
+
+        # import cmath
+        #
+        # def my_func(w, dk, T, T2, scale):
+        #     sig_gap_num = complex(dk * dk, 0)
+        #     if w > abs(dk) or w < -abs(dk):
+        #         gamma0 = abs(T) + abs(T2) * cmath.sqrt(w ** 2 - T2 ** 2) / abs(w)
+        #     else:
+        #         gamma0 = abs(T)
+        #     sig_gap_dom = complex(w, T2)
+        #     sig_gap = sig_gap_num / sig_gap_dom
+        #     sig = sig_gap - complex(0, 1) * gamma0
+        #     Green = scale / (w - sig)
+        #     return -Green.imag / np.pi
+        #
+        # mfv = np.vectorize(my_func)  # dk, T, T2, scale
+        # params, pcov = scipy.optimize.curve_fit(mfv, low_noise_w, low_noise_slice, p0=[5, 15, 0, 3e+05],
+        #                                         sigma=np.sqrt(low_noise_slice), maxfev=2000)
+        # plt.plot(low_noise_w, low_noise_slice, label='data')
+        # plt.plot(low_noise_w, mfv(low_noise_w, *params), label='fit')
+        # plt.show()
+        # print(str(params[0]) + " +- " + str(np.sqrt(np.diag(pcov))[0]))
 
     @staticmethod
     def get_fitted_map(fileName, k, w, energy_conv_sigma, temperature, second_fit=False, symmetrized=False):

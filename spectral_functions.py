@@ -1,5 +1,6 @@
-from functools import partial
 import math
+from functools import partial
+
 import numpy as np
 
 from general import n_vectorized, energy_conv_map
@@ -33,11 +34,26 @@ def u(k, a, c, dk):
     return 0.5 * (1 + e(k, a, c) / E(k, a, c, dk))
 
 
+def final_u(loc, dk):
+    if dk == 0:
+        if loc > 0:
+            return 1
+        elif loc < 0:
+            return 0
+        else:
+            return 0.5
+    return 0.5 * (1 + loc / (loc ** 2 + dk ** 2) ** 0.5)
+
+
 def v(k, a, c, dk):
     """
     Coherence Factors (relative intensity of BQP bands below EF)
     """
     return 1 - u(k, a, c, dk)
+
+
+def final_v(loc, dk):
+    return 1 - final_u(loc, dk)
 
 
 def A_BCS(k, w, a, c, dk, T):
@@ -48,6 +64,12 @@ def A_BCS(k, w, a, c, dk, T):
     return (1 / math.pi) * (
             u(k, a, c, dk) * local_T / ((w - E(k, a, c, dk)) ** 2 + local_T ** 2) + v(k, a, c, dk) * local_T / (
             (w + E(k, a, c, dk)) ** 2 + local_T ** 2))
+
+
+def final_A_BCS(w, loc, dk, T):
+    return (1 / math.pi) * (
+                final_u(loc, dk) * T / ((w - (loc ** 2 + dk ** 2) ** 0.5) ** 2 + T ** 2) + final_v(loc, dk) * T / (
+                    (w + (loc ** 2 + dk ** 2) ** 0.5) ** 2 + T ** 2))
 
 
 def A_BCS_2(k, w, a, c, dk, T):

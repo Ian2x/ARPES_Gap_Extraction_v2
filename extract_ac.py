@@ -6,7 +6,7 @@ import numpy as np
 import scipy.optimize
 
 from enum import Enum
-from extraction_functions import EDC_array_with_SE
+from extraction_functions import EDC_array_with_SE, final_EDC_array_with_SE, final_EDC_array
 from general import lorentz_form_with_secondary_electrons, reduced_chi, lorentz_form
 
 
@@ -16,8 +16,8 @@ class FittingOrder(Enum):
     right_to_left = 2
 
 
-def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=True, plot_trajectory_fits=False,
-               plot_EDC_fits=False, fittingOrder=FittingOrder.center_out, num_EDC_plots=10):
+def extract_ac(Z, k, w, temp, minWidth, maxWidth, energy_conv_sigma, fullFunc=True, hasBackground=True, plot_trajectory_fits=False,
+               plot_EDC_fits=False, fittingOrder=FittingOrder.center_out, simulated=False):
     """
     Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
     there a k-offset is detected
@@ -27,12 +27,13 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
     :param temp:
     :param minWidth:
     :param maxWidth:
+    :param energy_conv_sigma
     :param fullFunc: Whether to use full EDC function
     :param hasBackground: (Only when not fullFunc) Whether to use lorentz with secondary electrons
     :param plot_trajectory_fits:
     :param plot_EDC_fits:
     :param fittingOrder:
-    :param num_EDC_plots
+    :param simulated:
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
     """
     inv_Z = np.array([list(i) for i in zip(*Z)])
@@ -40,11 +41,13 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
     super_state_trajectory = np.zeros(z_width)
     super_state_trajectory_errors = np.zeros(z_width)
     if fullFunc:
-        params = [2e+07, 7, 5, 1, 1000, -54]
+        params = [1e+05, 10, 1, 1500, -7, 0.7, 300, -15]  # For real
+        if simulated:
+            params = [3e+07, 20, 1, -25]  # For simulated
     else:
         if hasBackground:
-            params = [4000000, -50, 10, 25000, -60, 0.1, 0]  # For simulated
-            # params = [40000, -25, 20, 1500, -10, 0.1, 200]  # For real
+            # params = [4000000, -50, 10, 25000, -60, 0.1, 0]  # For simulated
+            params = [40000, -25, 20, 1500, -10, 0.1, 200]  # For real
         else:
             params = [2000000, -50, 10, 0]
 
@@ -64,10 +67,11 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
                 params = save_params
         try:
             if fullFunc:
-                def EDC(x, scale, T, dk, p, a, c):
-                    return EDC_array_with_SE(x, scale, T, dk, p, -1, -1, -1, a, c, k[i], energy_conv_sigma=fullFunc,
-                                             temp=temp, flat_SEC=True)
-                bounds = ([0, 0, -np.inf, 0, 0, -np.inf], [np.inf, np.inf, np.inf, 10000, np.inf, 0])
+                EDC = partial(final_EDC_array_with_SE, energy_conv_sigma=energy_conv_sigma, temp=temp)
+                bounds = ([0, 0, 0, 0, -np.inf, -np.inf, 0, -np.inf], [np.inf, np.inf, np.inf, np.inf, 30, np.inf, np.inf, 30])  # Real
+                if simulated:
+                    EDC = partial(final_EDC_array, energy_conv_sigma=energy_conv_sigma, temp=temp)
+                    bounds = ([0, 0, 0, -np.inf], [np.inf, np.inf, np.inf, 30])
             else:
                 if hasBackground:
                     EDC = partial(lorentz_form_with_secondary_electrons, temp=temp)
@@ -79,7 +83,7 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
             p_sigma = np.sqrt(np.diag(pcov))
             redchi = reduced_chi(inv_Z[i], EDC(w, *params), inv_Z[i], len(inv_Z[i]) - 7)
             avgRedchi += redchi
-            if plot_EDC_fits and i % (z_width / num_EDC_plots) == 0:
+            if plot_EDC_fits and i % (z_width / 10) == 0:
                 print(params)
                 plt.title(str(k[i]))
                 plt.plot(w, inv_Z[i])
@@ -94,9 +98,8 @@ def extract_ac(Z, k, w, temp, minWidth, maxWidth, fullFunc=False, hasBackground=
             plt.plot(w, inv_Z[i])
             plt.show()
             quit()
-        super_state_trajectory[i] = params[1]
-        super_state_trajectory_errors[i] = p_sigma[1]
-
+        super_state_trajectory[i] = params[1] if not fullFunc else -np.sqrt((params[7 if not simulated else 3]) ** 2 + params[2] ** 2)
+        super_state_trajectory_errors[i] = p_sigma[1] if not fullFunc else 1
     avgRedchi /= z_width
     print(f"Average lorentz+sigmoid EDC redchi (maxWidth): {avgRedchi}")
     print("Lorentz fits finished.\n")
