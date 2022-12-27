@@ -7,47 +7,79 @@ import re
 
 import scipy
 
-from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array
-from general import k_as_index, get_degree_polynomial
+from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array, Norman_EDC_array2
+from general import k_as_index, get_degree_polynomial, secondary_electron_contribution_array, \
+    lorentz_form_with_secondary_electrons
 
 
 class Fitter:
 
     @staticmethod
-    def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma):
-        pars = lmfit.Parameters()
-        pars.add('scale', value=60000, min=0, max=1000000000)
-        pars.add('T', value=20, min=0, max=30)
-        pars.add('dk', value=0, min=-25, max=25)
-        pars.add('s', value=0, min=0, max=2000, vary=False)
-        pars.add('a', value=a_estimate, min=a_estimate / 1.5, max=a_estimate * 1.5)
-        pars.add('c', value=c_estimate, min=c_estimate * 1.5, max=c_estimate / 1.5)
-        # low_noise_w, low_noise_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
-        low_noise_w = w
-        low_noise_slice = [Z[i][kf_index] for i in range(len(w))]
-        low_noise_w, low_noise_slice = symmetrize_EDC(low_noise_w, low_noise_slice)
-        EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
-                           energy_conv_sigma=energy_conv_sigma)
+    def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma, simulated):
+        # w, EDC_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
+        EDC_slice = [Z[i][kf_index] for i in range(len(w))]
+        w, EDC_slice = symmetrize_EDC(w, EDC_slice)
+        while w[0] > 35:
+            w = w[1:]
+            EDC_slice = EDC_slice[1:]
+        while w[-1] < -35:
+            w = w[:-1]
+            EDC_slice = EDC_slice[:-1]
 
-        def calculate_residual(p):
-            EDC_residual = EDC_func(
-                np.asarray(low_noise_w), p['scale'], p['T'], p['dk'], p['s'], p['a'], p['c']) - low_noise_slice
-            weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slice)
-            return weighted_EDC_residual
+        pars = lmfit.Parameters()
+        if simulated:
+            pars.add('a', value=3e+06, min=0, vary=True)
+            pars.add('b', value=-12, min=-70, max=20, vary=True)
+            pars.add('c', value=8, min=0, max=np.inf, vary=True)
+            pars.add('s', value=170000, min=0, max=np.inf, vary=True)
+
+            EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma)
+
+            def calculate_residual(p):
+                EDC_residual = EDC_func(
+                    np.asarray(w), p['a'], p['b'], p['c'], p['s']) - EDC_slice
+                weighted_EDC_residual = EDC_residual / np.sqrt(EDC_slice)
+                return weighted_EDC_residual
+        else:
+            pars.add('scale', value=600000, min=0, vary=True)
+            pars.add('T', value=5, min=0, max=75, vary=True)
+            pars.add('dk', value=1, min=-75, max=75, vary=True)
+            pars.add('p', value=0, min=0, max=np.inf, vary=False)
+            pars.add('q', value=-5, min=-np.inf, max=0, vary=False)
+            pars.add('r', value=1, min=-5, max=5, vary=False)
+            pars.add('s', value=500, min=0, max=np.inf, vary=True)
+            pars.add('a', value=a_estimate, min=a_estimate / 2, max=a_estimate * 2, vary=True)
+            pars.add('c', value=c_estimate, min=c_estimate * 2, max=c_estimate / 2, vary=False)
+
+            EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
+                               energy_conv_sigma=energy_conv_sigma)
+
+            def calculate_residual(p):
+                EDC_residual = EDC_func(
+                    np.asarray(w), p['scale'], p['T'], p['dk'], p['p'], p['q'], p['r'], p['s'], p['a'],
+                    p['c']) - EDC_slice
+                weighted_EDC_residual = EDC_residual / np.sqrt(EDC_slice)
+                return weighted_EDC_residual
 
         mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
-        result = mini.minimize(method='leastsq')
+        result = mini.minimize(method='least_squares')
+
+        if simulated:
+            dk = result.params.get('b').value
+            dk_err = result.params.get('b').stderr
+        else:
+            dk = result.params.get('dk').value
+            dk_err = result.params.get('dk').stderr
+
         print(lmfit.fit_report(result))
-        scale = result.params.get('scale').value
-        T = result.params.get('T').value
-        dk = result.params.get('dk').value
-        s = result.params.get('s').value
-        a = result.params.get('a').value
-        c = result.params.get('c').value
+        print(np.abs(dk), ",", dk_err, ",", result.redchi)
+
         plt.title("Norman fit")
-        plt.plot(low_noise_w, low_noise_slice, label='data')
-        plt.plot(low_noise_w, EDC_func(low_noise_w, scale, T, dk, s, a, c), label='fit')
+        plt.plot(w, EDC_slice, label='data')
+        plt.plot(w, EDC_func(w, *result.params.values()), label='fit')
         plt.show()
+
+        return np.abs(dk), dk_err, result.redchi
 
         # import cmath
         #

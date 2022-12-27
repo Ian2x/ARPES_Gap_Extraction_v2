@@ -81,6 +81,20 @@ def A_BCS_2(k, w, a, c, dk, T):
     return local_T / (math.pi * ((w - e(k, a, c) - (dk ** 2) / (w + e(k, a, c))) ** 2 + local_T ** 2))
 
 
+def final_A_BCS_2(w, loc, dk, T):
+    local_T = max(T, 0)
+    return local_T / (math.pi * ((w - loc - (dk ** 2) / (w + loc)) ** 2 + local_T ** 2))
+
+
+def final_A_BCS_3(w, loc, dk, T1, T0):
+    local_T1 = max(T1, 0)
+    local_T0 = max(T0, 0)
+    denom = (w + loc) * (w + loc) + local_T0 * local_T0
+    real_pt = (dk * dk * (w + loc)) / denom
+    imag_pt = -local_T1 - (dk * dk * local_T0) / denom
+    return (1 / np.pi) * (-imag_pt) / ((w - loc - real_pt) * (w - loc - real_pt) + imag_pt * imag_pt)
+
+
 def sigma_real(k, w, a, c, dk, T0):
     T0 = max(T0, 0)
     return dk * dk * (w + E(k, a, c, dk)) / ((w + E(k, a, c, dk)) * (w + E(k, a, c, dk)) + T0 * T0)

@@ -107,10 +107,10 @@ def n(w, temp):
     kB = 8.617333262 * 10 ** (-2)
     uP = 0
     # h-bar: 6.582 * 10 ** (-13) (mev*s) # (Implicit bc already expressing energy)
-    if ((w - uP) / kB / temp) > 100:
-        return 0  # Rounding approximation
-    if (w - uP) / kB / temp < -100:
-        return 1
+    # if ((w - uP) / kB / temp) > 100:
+    #     return 0  # Rounding approximation
+    # if (w - uP) / kB / temp < -100:
+    #     return 1
     return 1 / (math.exp((w - uP) / kB / temp) + 1)
 
 
@@ -135,6 +135,7 @@ def secondary_electron_contribution_array(w_array, p, q, r, s):
             return_array[i] = s
         else:
             return_array[i] = p / (1 + math.exp(r * w_array[i] - r * q)) + s
+        # return_array[i] = p / (1 + math.exp(r * w_array[i] - r * q)) + s
 
     return return_array
 
@@ -150,7 +151,7 @@ def reduced_chi(data, fit, absolute_sigma_squared, DOF):
     """
     res = 0
     for i in range(len(data)):
-        res += (data[i] - fit[i]) ** 2 / absolute_sigma_squared[i]
+        res += (data[i] - fit[i]) ** 2 / (absolute_sigma_squared[i] if absolute_sigma_squared[i] != 0 else 1)
     return res / DOF
 
 
@@ -202,6 +203,10 @@ def gaussian_form(x, a, b, c, d, temp):
     return (gaussian(x, a, b, c, d) + gaussian(-x, a, b, c, d)) * n_vectorized(x, temp)
 
 
+def gaussian_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
+    return gaussian_form(x, a, b, c, 0, temp) + secondary_electron_contribution_array(x, p, q, r, s)
+
+
 def lorentz(x, a, b, c, d):
     """
     Lorentz Function with vertical shift
@@ -217,9 +222,9 @@ def lorentz(x, a, b, c, d):
 
 
 def lorentz_form(x, a, b, c, d, temp):
-    return (lorentz(x, a, b, c, d) + lorentz(-x, a, b, c, d)) * n_vectorized(x, temp)
+    # return (lorentz(x, a, b, c, d) + lorentz(-x, a, b, c, d)) * n_vectorized(x, temp)
 
-    # return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
+    return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
 
 
 def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
@@ -348,3 +353,15 @@ def reject_outliers(data, m = 2.):
     mdev = np.median(d)
     s = d/mdev if mdev else 0.
     return data[s<m]
+
+
+def error_weighted_mean(x, w):
+    #  https://www.sciencedirect.com/science/article/abs/pii/135223109400210C
+    #  https://stats.stackexchange.com/questions/25895/computing-standard-error-in-weighted-mean-estimation
+    n = len(w)
+    xWbar = np.average(x, weights=w)
+    wbar = np.mean(w)
+    out = n / ((n - 1) * (sum(w) ** 2)) * (sum((w * x - wbar * xWbar) ** 2) - 2 * xWbar * sum(
+        (w - wbar) * (w * x - wbar * xWbar)) + (xWbar ** 2) * sum((w - wbar) ** 2))
+    out = np.sqrt(out)
+    return out
