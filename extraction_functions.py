@@ -1,41 +1,61 @@
 import numpy as np
 import math
 
-from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array, lorentz
+from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array, lorentz, \
+    gaussian
 from spectral_functions import A_BCS, A_BCS_3, final_A_BCS, A_BCS_2, final_A_BCS_2, final_A_BCS_3
 
 
-def Norman_EDC_array(w_array, scale, T, dk, p, q, r, s, a, c, fixed_k, energy_conv_sigma, convolution_extension=None):
+def Norman_EDC_array(w_array, scale, loc, dk, T1, T0, s, energy_conv_sigma, convolution_extension=None):
     """
         EDC slice function
         :param w_array: energy array
         :param scale: scaling factor
-        :param T:
+        :param loc:
         :param dk:
-        :param p:
-        :param q:
-        :param r:
+        :param T1:
+        :param T0:
         :param s:
-        :param a:
-        :param c:
-        :param fixed_k: momentum of EDC
         :param energy_conv_sigma:
-        :param temp:
         :param convolution_extension:
         :return:
         """
     if convolution_extension is None:
         convolution_extension = int(
-            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 4)  # >> 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
     temp_array = energy_conv_to_array(temp_w_array, np.multiply(
-        A_BCS_2(fixed_k, temp_w_array, a, c, dk, T), scale),
+        final_A_BCS_3(temp_w_array, loc, dk, T1, T0) + final_A_BCS_3(-temp_w_array, loc, dk, T1, T0), scale),
                                       energy_conv_sigma)
-    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + secondary_electron_contribution_array(w_array, p, q, r, s) + secondary_electron_contribution_array(-w_array, p, q, r, s)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + s
     return return_array
 
 
-def Norman_EDC_array2(w_array, a, b, c, s, energy_conv_sigma, convolution_extension=None):
+def Norman_EDC_array3(w_array, scale, loc, dk, T1, s, energy_conv_sigma, convolution_extension=None):
+    """
+        EDC slice function
+        :param w_array: energy array
+        :param scale: scaling factor
+        :param loc:
+        :param dk:
+        :param T1:
+        :param s:
+        :param energy_conv_sigma:
+        :param convolution_extension:
+        :return:
+        """
+    if convolution_extension is None:
+        convolution_extension = int(
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 4)  # >> 99% ? maybe...
+    temp_w_array = extend_array(w_array, convolution_extension)
+    temp_array = energy_conv_to_array(temp_w_array, np.multiply(
+        final_A_BCS(temp_w_array, loc, dk, T1) + final_A_BCS(-temp_w_array, loc, dk, T1), scale),
+                                      energy_conv_sigma)
+    return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + s
+    return return_array
+
+
+def Norman_EDC_array2(w_array, a, b, c, s, energy_conv_sigma, convolution_extension=None, noConvolute=False):
     """
         EDC slice function
         :param w_array: energy array
@@ -45,13 +65,16 @@ def Norman_EDC_array2(w_array, a, b, c, s, energy_conv_sigma, convolution_extens
         :param s:
         :param energy_conv_sigma:
         :param convolution_extension:
+        :param noConvolute:
         :return:
         """
+    if noConvolute:
+        return gaussian(w_array, a, b, c, 0) + gaussian(-w_array, a, b, c, 0) + s
     if convolution_extension is None:
         convolution_extension = int(
-            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 4)  # >> 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
-    temp_array = energy_conv_to_array(temp_w_array, lorentz(temp_w_array, a, b, c, 0) + lorentz(-temp_w_array, a, b, c, 0) , energy_conv_sigma)
+    temp_array = energy_conv_to_array(temp_w_array, gaussian(temp_w_array, a, b, c, 0) + gaussian(-temp_w_array, a, b, c, 0), energy_conv_sigma)
     return_array = temp_array[convolution_extension:convolution_extension + len(w_array)] + s
     return return_array
 
@@ -130,7 +153,7 @@ def EDC_array(w_array, scale, T, T2, dk, a, c, fixed_k, energy_conv_sigma, temp,
               symmetrized=False):
     if convolution_extension is None:
         convolution_extension = int(
-            energy_conv_sigma / (w_array[0] - w_array[1]) * 2.5)  # between 96% and 99% ? maybe...
+            energy_conv_sigma / (w_array[0] - w_array[1]) * 4)  # >> 99% ? maybe...
     temp_w_array = extend_array(w_array, convolution_extension)
     if symmetrized:
         temp_array = energy_conv_to_array(temp_w_array, np.multiply(

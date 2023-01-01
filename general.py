@@ -199,12 +199,12 @@ def gaussian(x, a, b, c, d):
     return a * math.e ** ((- (x - b) ** 2) / (2 * c ** 2)) + d
 
 
-def gaussian_form(x, a, b, c, d, temp):
+def gaussian_form_symmetrized(x, a, b, c, d, temp):
     return (gaussian(x, a, b, c, d) + gaussian(-x, a, b, c, d)) * n_vectorized(x, temp)
 
 
-def gaussian_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
-    return gaussian_form(x, a, b, c, 0, temp) + secondary_electron_contribution_array(x, p, q, r, s)
+def gaussian_form_symmetrized_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
+    return gaussian_form_symmetrized(x, a, b, c, 0, temp) + secondary_electron_contribution_array(x, p, q, r, s)
 
 
 def lorentz(x, a, b, c, d):
@@ -222,12 +222,14 @@ def lorentz(x, a, b, c, d):
 
 
 def lorentz_form(x, a, b, c, d, temp):
-    # return (lorentz(x, a, b, c, d) + lorentz(-x, a, b, c, d)) * n_vectorized(x, temp)
-
     return lorentz(x, a, b, c, d) * n_vectorized(x, temp)
 
 
-def lorentz_form_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
+def lorentz_form_symmetrized(x, a, b, c, d, temp):
+    return (lorentz(x, a, b, c, d) + lorentz(-x, a, b, c, d)) * n_vectorized(x, temp)
+
+
+def lorentz_form_symmetrized_with_secondary_electrons(x, a, b, c, p, q, r, s, temp):
     return lorentz_form(x, a, b, c, 0, temp) + secondary_electron_contribution_array(x, p, q, r, s)
 
 
@@ -347,6 +349,7 @@ def extend_array(array, one_side_extension):
 polynomial_functions = [d1_polynomial, d2_polynomial, d3_polynomial, d4_polynomial,
                         d5_polynomial, d6_polynomial, d7_polynomial, d8_polynomial, d9_polynomial,
                         d10_polynomial, d11_polynomial, d12_polynomial]
+
 
 def reject_outliers(data, m = 2.):
     d = np.abs(data - np.median(data))

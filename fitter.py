@@ -3,66 +3,52 @@ import lmfit
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-import re
-
-import scipy
-
-from extraction_functions import EDC_prep, EDC_array_with_SE, symmetrize_EDC, Norman_EDC_array, Norman_EDC_array2
-from general import k_as_index, get_degree_polynomial, secondary_electron_contribution_array, \
-    lorentz_form_with_secondary_electrons
+from extraction_functions import symmetrize_EDC, Norman_EDC_array, Norman_EDC_array2
 
 
 class Fitter:
-
     @staticmethod
-    def NormanFit(Z, k, w, a_estimate, c_estimate, kf_index, energy_conv_sigma, simulated):
-        # w, EDC_slice, _, _, _, _ = EDC_prep(kf_index, Z, w, min_fit_count)
-        EDC_slice = [Z[i][kf_index] for i in range(len(w))]
+    def NormanFit(Z, k, w, k_index, energy_conv_sigma, simulated, params=None, print_results=False, plot_results=False):
+        # w, EDC_slice, _, _, _, _ = EDC_prep(k_index, Z, w, min_fit_count)
+        EDC_slice = [Z[i][k_index] for i in range(len(w))]
         w, EDC_slice = symmetrize_EDC(w, EDC_slice)
-        while w[0] > 35:
+        while w[0] > (35 if simulated else 45):
             w = w[1:]
             EDC_slice = EDC_slice[1:]
-        while w[-1] < -35:
+        while w[-1] < (-35 if simulated else -45):
             w = w[:-1]
             EDC_slice = EDC_slice[:-1]
-
         pars = lmfit.Parameters()
         if simulated:
-            pars.add('a', value=3e+06, min=0, vary=True)
-            pars.add('b', value=-12, min=-70, max=20, vary=True)
-            pars.add('c', value=8, min=0, max=np.inf, vary=True)
-            pars.add('s', value=170000, min=0, max=np.inf, vary=True)
+            pars.add('a', value=params[0] if params is not None else 3e+06, min=0, vary=True)
+            pars.add('b', value=params[1] if params is not None else -24, min=-50, max=0.1, vary=True)
+            pars.add('c', value=params[2] if params is not None else 8, min=0, max=np.inf, vary=True)
+            pars.add('s', value=params[3] if params is not None else 350000, min=0, max=np.inf, vary=True)
 
-            EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma)
+            EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma, noConvolute=True)
 
             def calculate_residual(p):
-                EDC_residual = EDC_func(
-                    np.asarray(w), p['a'], p['b'], p['c'], p['s']) - EDC_slice
+                EDC_residual = EDC_func(np.asarray(w), p['a'], p['b'], p['c'], p['s']) - EDC_slice
                 weighted_EDC_residual = EDC_residual / np.sqrt(EDC_slice)
                 return weighted_EDC_residual
         else:
-            pars.add('scale', value=600000, min=0, vary=True)
-            pars.add('T', value=5, min=0, max=75, vary=True)
-            pars.add('dk', value=1, min=-75, max=75, vary=True)
-            pars.add('p', value=0, min=0, max=np.inf, vary=False)
-            pars.add('q', value=-5, min=-np.inf, max=0, vary=False)
-            pars.add('r', value=1, min=-5, max=5, vary=False)
-            pars.add('s', value=500, min=0, max=np.inf, vary=True)
-            pars.add('a', value=a_estimate, min=a_estimate / 2, max=a_estimate * 2, vary=True)
-            pars.add('c', value=c_estimate, min=c_estimate * 2, max=c_estimate / 2, vary=False)
+            pars.add('scale', value=params[0] if params is not None else 35000, min=0, vary=True)
+            pars.add('loc', value=0, min=-100, max=0.1, vary=False)
+            pars.add('dk', value=params[2] if params is not None else 10, min=-75, max=75, vary=True)
+            pars.add('T1', value=params[3] if params is not None else 15, min=0, max=75, vary=True)
+            pars.add('T0', value=params[4] if params is not None else 0, min=0, max=75, vary=True)
+            pars.add('s', value=params[5] if params is not None else 1000, min=0, max=np.inf, vary=True)
 
-            EDC_func = partial(Norman_EDC_array, fixed_k=k[kf_index],
-                               energy_conv_sigma=energy_conv_sigma)
+            EDC_func = partial(Norman_EDC_array, energy_conv_sigma=energy_conv_sigma)
 
             def calculate_residual(p):
                 EDC_residual = EDC_func(
-                    np.asarray(w), p['scale'], p['T'], p['dk'], p['p'], p['q'], p['r'], p['s'], p['a'],
-                    p['c']) - EDC_slice
+                    np.asarray(w), p['scale'], p['loc'], p['dk'], p['T1'], p['T0'], p['s']) - EDC_slice
                 weighted_EDC_residual = EDC_residual / np.sqrt(EDC_slice)
                 return weighted_EDC_residual
 
         mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
-        result = mini.minimize(method='least_squares')
+        result = mini.minimize(method='least_squares', xtol=1e-07 if simulated else 1e-05)
 
         if simulated:
             dk = result.params.get('b').value
@@ -71,255 +57,14 @@ class Fitter:
             dk = result.params.get('dk').value
             dk_err = result.params.get('dk').stderr
 
-        print(lmfit.fit_report(result))
-        print(np.abs(dk), ",", dk_err, ",", result.redchi)
-
-        plt.title("Norman fit")
-        plt.plot(w, EDC_slice, label='data')
-        plt.plot(w, EDC_func(w, *result.params.values()), label='fit')
-        plt.show()
-
-        return np.abs(dk), dk_err, result.redchi
-
-        # import cmath
-        #
-        # def my_func(w, dk, T, T2, scale):
-        #     sig_gap_num = complex(dk * dk, 0)
-        #     if w > abs(dk) or w < -abs(dk):
-        #         gamma0 = abs(T) + abs(T2) * cmath.sqrt(w ** 2 - T2 ** 2) / abs(w)
-        #     else:
-        #         gamma0 = abs(T)
-        #     sig_gap_dom = complex(w, T2)
-        #     sig_gap = sig_gap_num / sig_gap_dom
-        #     sig = sig_gap - complex(0, 1) * gamma0
-        #     Green = scale / (w - sig)
-        #     return -Green.imag / np.pi
-        #
-        # mfv = np.vectorize(my_func)  # dk, T, T2, scale
-        # params, pcov = scipy.optimize.curve_fit(mfv, low_noise_w, low_noise_slice, p0=[5, 15, 0, 3e+05],
-        #                                         sigma=np.sqrt(low_noise_slice), maxfev=2000)
-        # plt.plot(low_noise_w, low_noise_slice, label='data')
-        # plt.plot(low_noise_w, mfv(low_noise_w, *params), label='fit')
-        # plt.show()
-        # print(str(params[0]) + " +- " + str(np.sqrt(np.diag(pcov))[0]))
-
-    @staticmethod
-    def get_fitted_map(fileName, k, w, energy_conv_sigma, temperature, second_fit=False, symmetrized=False):
-        data_file = open(fileName, "r")
-        while '[[Variables]]' not in data_file.readline():
-            pass
-        if second_fit:
-            while '[[Variables]]' not in data_file.readline():
-                pass
-
-        def extract_value(s):
-            # regex for number
-            match_number = re.compile('[-+]?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *[-+]?\ *[0-9]+)?')
-            return float(re.findall(match_number, s[s.index(':'):])[0])
-
-        # Read scale parameters
-        scale_values = []
-        while True:
-            temp = data_file.readline()
-            if 'scale_' not in temp:
-                break
-            value = extract_value(temp)
-            scale_values.append(value)
-        # Read T params
-        T_values = []
-        while True:
-            if 'T_' not in temp:
-                break
-            value = extract_value(temp)
-            T_values.append(value)
-            temp = data_file.readline()
-        # Read secondary_electron_scale params
-        secondary_electron_scale_values = []
-        while True:
-            if 'secondary_electron_scale_' not in temp:
-                break
-            value = extract_value(temp)
-            secondary_electron_scale_values.append(value)
-            temp = data_file.readline()
-        dk = extract_value(temp)
-        q = extract_value(data_file.readline())
-        r = extract_value(data_file.readline())
-        s = extract_value(data_file.readline())
-        a = extract_value(data_file.readline())
-        c = extract_value(data_file.readline())
-        k_error = extract_value(data_file.readline())
-
-        height = len(w)
-        width = len(k)
-        Z_fit_inverse = np.zeros((width, height))
-        scale_polynomial = get_degree_polynomial(len(scale_values))
-        T_polynomial = get_degree_polynomial(len(T_values))
-        secondary_electron_scale_polynomial = get_degree_polynomial(len(secondary_electron_scale_values))
-        for i in range(width):
-            local_k = k[i] - k_error
-            local_scale = scale_polynomial(local_k, *scale_values)
-            local_T = T_polynomial(local_k, *T_values)
-            local_secondary_electron_scale = secondary_electron_scale_polynomial(local_k,
-                                                                                 *secondary_electron_scale_values)
-
-            EDC = EDC_array_with_SE(w, local_scale, local_T, dk, local_secondary_electron_scale, q, r, s, a, c, local_k,
-                                    energy_conv_sigma, temperature, symmetrized=symmetrized, flat_SEC=False)
-            Z_fit_inverse[i] = EDC
-        fitted_Z = np.array([list(i) for i in zip(*Z_fit_inverse)])
-        plt.title("Fitted map")
-        im = plt.imshow(fitted_Z, cmap=plt.cm.RdBu, aspect='auto', interpolation='nearest',
-                        extent=[min(k), max(k), min(w), max(w)])  # drawing the function
-        plt.colorbar(im)
-
-        plt.show()
-        return fitted_Z
-
-    @staticmethod
-    def relative_error_map(Z, fitted_Z, k, w, DOF):
-        error_map = np.abs(fitted_Z - Z)
-        relative_error_map = error_map / np.sqrt(Z)
-        plt.title("Relative error map")
-        im = plt.imshow(relative_error_map, cmap=plt.cm.RdBu, aspect='auto',
-                        extent=[min(k), max(k), min(w), max(w)])  # drawing the function
-        plt.colorbar(im)
-        plt.show()
-
-        redchi = np.sum(error_map * error_map / Z) / DOF
-        print("Reduced chi: " + str(redchi))
-
-    def __init__(self, Z, k, w, a_estimate, c_estimate, dk_estimate, kf_estimate, temp, energy_conv_sigma, EDC_density,
-                 fit_range_multiplier=2, override_index_to_fit=None, min_fit_count=25):
-        self.Z = Z
-        self.k = k
-        self.w = w
-        self.a_estimate = a_estimate
-        self.c_estimate = c_estimate
-        self.dk_estimate = dk_estimate
-        self.energy_conv_sigma = energy_conv_sigma
-        self.EDC_density = EDC_density
-        self.temp = temp
-        self.fit_range_multiplier = fit_range_multiplier
-        self.min_fit_count = min_fit_count
-        if override_index_to_fit is not None:
-            self.index_to_fit = override_index_to_fit
-        else:
-            try:
-                temp_dk = max(dk_estimate, self.energy_conv_sigma / 3)
-                fit_start_k = math.sqrt(
-                    (-fit_range_multiplier * temp_dk - c_estimate) / a_estimate)
-            except ValueError:
-                fit_start_k = 0
-                print("Able to fit momenta through k=0")
-            a = max(k_as_index(-kf_estimate, k), 0)
-            b = k_as_index(-fit_start_k, k)
-            c = k_as_index(fit_start_k, k)
-            d = min(k_as_index(kf_estimate, k), k.size)
-            if b == c:
-                self.index_to_fit = [*range(a, d, EDC_density)]
-            else:
-                self.index_to_fit = [*range(a, b, EDC_density)] + [*range(c, d, EDC_density)]
-
-    def fit(self, scale_values, T_values, secondary_electron_scale_values, plot_results=True, scale_fixed=False,
-            T_fixed=False, SEC_fixed=False,
-            ac_fixed=False, dk_0_fixed=False, k_error_estimate=0, q_estimate=-7.5, r_estimate=0.5, s_estimate=25):
-        print("Fitting: " + str(self.index_to_fit))
-
-        should_vary_scale = not scale_fixed
-        should_vary_T = not T_fixed
-        should_vary_SEC = not SEC_fixed
-        should_vary_ac = not ac_fixed
-
-        # Add parameters
-        pars = lmfit.Parameters()
-        for i in range(len(scale_values)):
-            pars.add('scale_' + str(i), value=scale_values[i], vary=should_vary_scale)
-        for i in range(len(T_values)):
-            pars.add('T_' + str(i), value=T_values[i], vary=should_vary_T)
-        for i in range(len(secondary_electron_scale_values)):
-            pars.add('secondary_electron_scale_' + str(i), value=secondary_electron_scale_values[i],
-                     vary=should_vary_SEC)
-
-        pars.add('dk', value=(0 if dk_0_fixed else self.dk_estimate), min=-100, max=100, vary=(not dk_0_fixed))
-        pars.add('q', value=q_estimate, max=0, vary=True)
-        pars.add('r', value=r_estimate, min=0, vary=True)
-        pars.add('s', value=s_estimate, vary=True)
-        pars.add('a', value=self.a_estimate, min=min(self.a_estimate / 1.5, 1750), max=max(self.a_estimate * 1.5, 3000),
-                 vary=should_vary_ac)
-        pars.add('c', value=self.c_estimate, min=min(self.c_estimate / 1.5, -50), max=max(self.c_estimate * 1.5, -15),
-                 vary=should_vary_ac)
-        pars.add('k_error', value=k_error_estimate, min=-0.03, max=0.03, vary=True)
-
-        # Prepare EDCs to fit
-        EDC_func_array = []
-        low_noise_slices = []
-        low_noise_ws = []
-        for i in range(len(self.index_to_fit)):
-            ki = self.index_to_fit[i]
-            temp_low_noise_w, temp_low_noise_slice, _, _, _, _ = EDC_prep(ki, self.Z, self.w, self.min_fit_count,
-                                                                          exclude_secondary=False)
-            low_noise_ws.append(temp_low_noise_w)
-            low_noise_slices.append(temp_low_noise_slice)
-            EDC_func_array.append(partial(EDC_array_with_SE,
-                                          energy_conv_sigma=self.energy_conv_sigma, temp=self.temp, symmetrized=True, flat_SEC=False))
-        # Fetch local polynomials
-        scale_polynomial = get_degree_polynomial(len(scale_values))
-        T_polynomial = get_degree_polynomial(len(T_values))
-        secondary_electron_scale_polynomial = get_degree_polynomial(len(secondary_electron_scale_values))
-
-        def calculate_residual(p):
-            residual = np.zeros(0)
-            scale_polynomial_params = [p['scale_' + str(i)] for i in range(len(scale_values))]
-            T_polynomial_params = [p['T_' + str(i)] for i in range(len(T_values))]
-            secondary_electron_scale_params = [p['secondary_electron_scale_' + str(i)] for i in
-                                               range(len(secondary_electron_scale_values))]
-
-            for i in range(len(self.index_to_fit)):
-                ki = self.index_to_fit[i]
-                local_k = self.k[ki] - p['k_error']
-                local_scale = scale_polynomial(local_k, *scale_polynomial_params)
-                local_T = T_polynomial(local_k, *T_polynomial_params)
-                local_secondary_electron_scale = secondary_electron_scale_polynomial(local_k,
-                                                                                     *secondary_electron_scale_params)
-
-                EDC_residual = EDC_func_array[i](
-                    low_noise_ws[i], local_scale, local_T, p['dk'],
-                    local_secondary_electron_scale, p['q'],
-                    p['r'], p['s'], p['a'], p['c'], local_k) - \
-                               low_noise_slices[i]
-                weighted_EDC_residual = EDC_residual / np.sqrt(low_noise_slices[i])
-                residual = np.concatenate((residual, weighted_EDC_residual))
-            return residual
-
-        mini = lmfit.Minimizer(calculate_residual, pars, nan_policy='omit', calc_covar=True)
-        result = mini.minimize(method='leastsq')
-        print(lmfit.fit_report(result))
-
-        lmfit_scale_params = [result.params.get('scale_' + str(i)).value for i in range(len(scale_values))]
-        lmfit_T_params = [result.params.get('T_' + str(i)).value for i in range(len(T_values))]
-        lmfit_secondary_electron_scale_params = [result.params.get('secondary_electron_scale_' + str(i)).value for i in
-                                                 range(len(secondary_electron_scale_values))]
-        lmfit_dk = result.params.get('dk').value
-        lmfit_q = result.params.get('q').value
-        lmfit_r = result.params.get('r').value
-        lmfit_s = result.params.get('s').value
-        lmfit_a = result.params.get('a').value
-        lmfit_c = result.params.get('c').value
-        lmfit_k_error = result.params.get('k_error').value
+        if print_results:
+            print(lmfit.fit_report(result))
+            print(np.abs(dk), ",", dk_err, ",", result.redchi)
 
         if plot_results:
-            print("FINAL DK: ")
-            print(lmfit_dk)
-            for i in range(0, len(self.index_to_fit), max(int(len(self.index_to_fit) / 10), 1)):
-                ki = self.index_to_fit[i]
-                plt.title("momentum: " + str(self.k[ki]))
-                plt.plot(low_noise_ws[i], low_noise_slices[i], label='data')
-                local_scale = get_degree_polynomial(len(scale_values))(self.k[ki], *lmfit_scale_params)
-                local_T = get_degree_polynomial(len(T_values))(self.k[ki], *lmfit_T_params)
-                local_secondary_electron_scale = get_degree_polynomial(len(secondary_electron_scale_values))(self.k[ki],
-                                                                                                             *lmfit_secondary_electron_scale_params)
-                plt.plot(low_noise_ws[i], EDC_func_array[i](low_noise_ws[i], local_scale, local_T, lmfit_dk,
-                                                            local_secondary_electron_scale, lmfit_q, lmfit_r,
-                                                            lmfit_s, lmfit_a, lmfit_c, self.k[ki] - lmfit_k_error),
-                         label='fit')
-                plt.show()
-        return lmfit_scale_params, lmfit_T_params, lmfit_secondary_electron_scale_params, lmfit_dk, lmfit_q, lmfit_r, lmfit_s, lmfit_a, lmfit_c, lmfit_k_error
+            plt.title("Norman fit (k=" + str(k[k_index])+")")
+            plt.plot(w, EDC_slice, label='data')
+            plt.plot(w, EDC_func(w, *result.params.values()), label='fit')
+            plt.show()
+
+        return np.abs(dk), dk_err, result.redchi, list(result.params.values())
