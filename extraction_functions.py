@@ -1,6 +1,5 @@
 import numpy as np
-import math
-
+from math import fabs
 from general import secondary_electron_contribution_array, n_vectorized, energy_conv_to_array, extend_array, lorentz, \
     gaussian
 from spectral_functions import A_BCS, A_BCS_3, final_A_BCS, A_BCS_2, final_A_BCS_2, final_A_BCS_3
@@ -261,9 +260,12 @@ def symmetrize_EDC(axis_array, data_array):
     :param data_array: EDC
     :return:
     """
+    orig_arr_size = len(axis_array)
+    orig_step_size = axis_array[0] - axis_array[1]
+
     # count how many extra positive or negative axis indices there are
     extra_positive = 0
-    for i in range(len(axis_array)):
+    for i in range(orig_arr_size):
         if axis_array[i] > 0:
             extra_positive += 1
         elif axis_array[i] < 0:
@@ -272,25 +274,45 @@ def symmetrize_EDC(axis_array, data_array):
         cropped_axis_array = axis_array[extra_positive:]
     else:
         cropped_axis_array = axis_array[:extra_positive]
+    new_arr_size = len(cropped_axis_array)
 
-    one_side_length = min(cropped_axis_array[0], math.fabs(cropped_axis_array[len(cropped_axis_array) - 1]))
-    step_size = (2 * one_side_length) / len(cropped_axis_array)
-    new_axis_array = np.arange(one_side_length, -one_side_length - 0.01, -step_size)
-    new_data_array = np.zeros(len(new_axis_array))
+    one_side_length = min(fabs(cropped_axis_array[0]), fabs(cropped_axis_array[new_arr_size - 1]))
+    step_size = (2 * one_side_length) / (new_arr_size - 1)
+    new_axis_array = np.arange(one_side_length, -one_side_length - 0.001, -step_size)
+    new_data_array = np.zeros(new_arr_size)
+    assert len(new_data_array) == len(new_axis_array) == new_arr_size
 
-    def interpolate_point(value):
-        # Assumes value is greater than smallest axis_array value, and smaller than largest axis_array value
-        for i in range(len(axis_array)):
-            if math.fabs(value - axis_array[i]) < 0.00001:
-                return data_array[i]
-            elif (axis_array[i] < value < axis_array[i + 1]) or (axis_array[i] > value > axis_array[i + 1]):
-                total_distance = math.fabs(axis_array[i + 1] - axis_array[i])
-                return data_array[i] * math.fabs(axis_array[i + 1] - value) / total_distance + data_array[
-                    i + 1] * math.fabs(axis_array[i] - value) / total_distance
+    curr_top = 0
+    for i in range(new_arr_size):
+        target = new_axis_array[i]
+        while curr_top + 2 < orig_arr_size and axis_array[curr_top + 1] >= target:
+            curr_top += 1
+        if target == axis_array[curr_top + 1]:
+            new_data_array[i] += data_array[curr_top + 1]
+        elif axis_array[curr_top + 1] < target <= axis_array[curr_top]:
+            new_data_array[i] += (data_array[curr_top] * abs(axis_array[curr_top + 1] - target) +
+                                  data_array[curr_top + 1] * abs(axis_array[curr_top] - target)) / orig_step_size
 
-    for i in range(len(new_data_array)):
-        new_data_array[i] = interpolate_point(new_axis_array[i]) + interpolate_point(-new_axis_array[i])
+    curr_bot = orig_arr_size - 1
+    for i in range(new_arr_size):
+        target = -new_axis_array[i]
+        while curr_bot - 2 >= 0 and axis_array[curr_bot - 1] <= target:
+            curr_bot -= 1
+        if target == axis_array[curr_bot - 1]:
+            new_data_array[i] += data_array[curr_bot - 1]
+        elif axis_array[curr_bot] <= target < axis_array[curr_bot - 1]:
+            new_data_array[i] += (data_array[curr_bot] * fabs(axis_array[curr_bot - 1] - target) +
+                                  data_array[curr_bot - 1] * fabs(axis_array[curr_bot] - target)) / orig_step_size
     return new_axis_array, new_data_array
+
+def symmetrize_Z(axis_array, Z):
+    inv_Z = np.array([list(i) for i in zip(*Z)])
+    new_Z = []
+    new_axis_array = None
+    for EDC in inv_Z:
+        new_axis_array = symmetrize_EDC(axis_array, EDC)[0]
+        new_Z.append(symmetrize_EDC(axis_array, EDC)[1])
+    return new_axis_array, np.array(new_Z).T
 
 
 def estimated_peak_movement(k, a, c, dk):

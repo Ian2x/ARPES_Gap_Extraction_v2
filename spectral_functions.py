@@ -138,6 +138,11 @@ def I(k, w, true_a, true_c, true_dk, true_T, scaleup_factor, energy_conv_sigma, 
     return energy_conv_map(k, w, convolution_function, energy_conv_sigma, scaleup_factor)
 
 
+def I_nofermi(k, w, true_a, true_c, true_dk, true_T, scaleup_factor, energy_conv_sigma):
+    convolution_function = partial(A_BCS, a=true_a, c=true_c, dk=true_dk, T=true_T)
+    return energy_conv_map(k, w, convolution_function, energy_conv_sigma, scaleup_factor)
+
+
 def norm_state_Io_n_A_BCS(k, w, true_a, true_c, true_T, temp):
     """
     Normal-state Composition Function (dk=0, knows a, c, and T) (ONLY meant to be used with simulated data)

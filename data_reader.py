@@ -9,6 +9,7 @@ class FileType(Enum):
     FAR_OFF_NODE = 0
     NEAR_NODE = 1
     SIMULATED = 2
+    ANTI_NODE = 3
 
 
 class DataReader:
@@ -61,7 +62,7 @@ class DataReader:
         temp = Eugen_data_file.readline()  # energy?
         temp_split = temp.split()
 
-        if fileType == FileType.FAR_OFF_NODE:
+        if fileType == FileType.FAR_OFF_NODE or fileType == FileType.ANTI_NODE:
             w_dim = 201
             k_dim = 695
         elif fileType == FileType.NEAR_NODE:
@@ -76,7 +77,7 @@ class DataReader:
         self.full_w = np.flip(w)
 
         Eugen_data_file.readline()  # empty 0.0164694505526385 / 0.515261371488587
-        if fileType == FileType.FAR_OFF_NODE:
+        if fileType == FileType.FAR_OFF_NODE or fileType == FileType.ANTI_NODE:
             Eugen_data_file.readline()  # unfilled 0.513745070571566 (FOR FAR OFF NODE ONLY)
             Eugen_data_file.readline()  # unfilled 0.512228769654545 (FOR FAR OFF NODE ONLY)
 
@@ -112,6 +113,8 @@ class DataReader:
         """
         height_offset = round(y_center - 0.5 * height)
         width_offset = round(x_center - 0.5 * width)
+        print(height_offset, "+")
+        print(width_offset, "-")
 
         zoomed_k = np.zeros(width)
         zoomed_w = np.zeros(height)
