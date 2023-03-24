@@ -7,12 +7,12 @@ from spectral_functions import I, I_nofermi, Io_n_A_BCS, A_BCS
 
 class Simulator:
 
-    def __init__(self, dk=15, energy_convolution_sigma=(8 / 3.5482004503), T=5, raw_scaleup_factor=2000, kf=0.4, c=-1000,
-                 w=np.arange(-90, 90, 1), d_theta=(0.045 * math.pi / 180), temp = 20.44, k_step=None, width_factor=0.04):
+    def __init__(self, dk=15, energy_convolution_sigma=(8 / 2.355), T=5, scaleup_factor=10000, kf=0.4, c=-1000,
+                 w=np.arange(-50, 50, 1), d_theta=(0.045 * math.pi / 180), temp=20.44, k_step=None, width=0.016):
         self.dk = dk
         self.energy_convolution_sigma = energy_convolution_sigma
         self.T = T
-        self.scaleup_factor = raw_scaleup_factor # (energy_convolution_sigma + T)
+        self.scaleup_factor = scaleup_factor
         self.kf = kf
         self.c = c
         self.a = -c / (kf ** 2)
@@ -22,7 +22,7 @@ class Simulator:
                     10 ** 10)
         else:
             k_step = k_step
-        self.k = np.arange(kf - width_factor * kf, kf + width_factor * kf, k_step)
+        self.k = np.arange(kf - width / 2, kf + width / 2, k_step)
         self.temp = temp
 
     def generate_spectra(self, fermi=True, convolute=True, noise=True):

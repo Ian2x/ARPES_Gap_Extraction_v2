@@ -113,8 +113,6 @@ class DataReader:
         """
         height_offset = round(y_center - 0.5 * height)
         width_offset = round(x_center - 0.5 * width)
-        print(height_offset, "+")
-        print(width_offset, "-")
 
         zoomed_k = np.zeros(width)
         zoomed_w = np.zeros(height)

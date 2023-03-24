@@ -21,6 +21,8 @@ class Fitter:
             EDC_slice = EDC_slice[:-1]
         pars = lmfit.Parameters()
         if fileType == FileType.SIMULATED:
+            if params is not None:
+                params[1] = -0.1
             pars.add('a', value=params[0] if params is not None else 1900, min=0, vary=True)
             pars.add('b', value=params[1] if params is not None else -24, min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # params[1] if params is not None else -24
             pars.add('c', value=params[2] if params is not None else 10, min=0, max=np.inf, vary=True)

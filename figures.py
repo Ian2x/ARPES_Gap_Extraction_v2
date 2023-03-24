@@ -8,6 +8,7 @@ import numpy as np
 from functools import partial
 
 from matplotlib.colors import LinearSegmentedColormap, LogNorm
+from matplotlib.lines import Line2D
 from matplotlib.ticker import FixedFormatter, FixedLocator
 from data_reader import FileType, DataReader
 from extraction_functions import Norman_EDC_array2, Norman_EDC_array, symmetrize_Z
@@ -42,15 +43,17 @@ def cap_rss(arr, truth, cap):
     return mean([((x - truth) ** 2 if np.abs(x-truth) < cap else cap ** 2) for x in arr])
 
 
-def figure1_ab(gap):
-    sim = Simulator(k_step=0.0005, w=np.arange(-230, 230, 5), width_factor=0.1, dk=50 if gap else 0.001)
-    Z = np.sqrt(np.flip(sim.generate_spectra(fermi=False), 0))
+def figure1ab(gap):
+    sim = Simulator(k_step=0.0005, dk=25 if gap else 0, w=np.arange(-80, 80, 1), width=0.03)
+
+    Z = np.sqrt(np.flip(sim.generate_spectra(fermi=False, noise=False), 0))
+
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     X, Y = np.meshgrid(sim.k, sim.w)
 
-    ax.plot_wireframe(X, Y, Z, rstride=0, cstride=15)
-    ax.set_zlim(0, 7 * 1e5)
+    ax.plot_wireframe(X, Y, Z, rstride=0, cstride=5)
+    ax.set_zlim(0, 35)
 
     ax.xaxis.set_major_locator(FixedLocator([0.4]))
     ax.xaxis.set_major_formatter(FixedFormatter([kF]))
@@ -71,7 +74,7 @@ def figure1_ab(gap):
     plt.show()
 
 
-def figure1_cd(offset):
+def figure1cd(offset):
     gapvtemp = lambda t : np.sqrt(100-(t/2) ** 2) if t < 20 else 0
     # gapvtemp = [12, 11.998, 11.992, 11.976, 11.946, 11.893, 11.807, 11.677, 11.486, 11.486, 11.36, 11.21, 11.031,
     #             10.817, 10.563, 10.258, 9.891, 9.448, 8.906, 8.233, 7.377, 6.238, 4.573, 0, 0, 0]
@@ -111,7 +114,7 @@ def figure1_cd(offset):
     plt.show()
 
 
-def figure2_a():
+def figure2a():
     # Prep data
     simulated_file = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/Akw_Simulation_20221222_Fitting/Akw_dEdep_0017.dat"
     data = DataReader(fileName=simulated_file, plot=False, fileType=FileType.SIMULATED)
@@ -229,7 +232,7 @@ def figure2_a():
     plt.show()
 
 
-def figure2_b(fileType="SNR"):
+def figure2b(fileType="SNR"):
     file = "/Users/ianhu/Documents/ARPES/_ " + fileType + " 4 - Sheet1.csv"
     with open(file, 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
@@ -276,12 +279,12 @@ def figure2_b(fileType="SNR"):
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel("Estimated Gap Size (mev)")
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.show()
 
 
-def figure2_c(step=1):
-    sim = Simulator(k_step=0.0001, w=np.arange(-40, 40, 0.2), width_factor=0.01, dk=15, energy_convolution_sigma=4)
+def figure2c(step=1):
+    sim = Simulator(k_step=0.0005)
 
     if step == 1:
         Z = sim.generate_spectra(fermi=False, convolute=False, noise=False)
@@ -305,7 +308,7 @@ def figure2_c(step=1):
     plt.show()
 
 
-def figure3_a(nodeType="NN"):
+def figure3a(nodeType="NN"):
     if nodeType == "NN":
         fileName = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_near_node/OD50_0233_nL.dat"
         data = DataReader(fileName=fileName, plot=False, fileType=FileType.NEAR_NODE)
@@ -330,7 +333,7 @@ def figure3_a(nodeType="NN"):
     plt.show()
 
 
-def figure3_b(nodeType="NN"):
+def figure3b(nodeType="NN"):
     if nodeType == "NN":
         ft = "Near"
         title = "Near-Node Experimental Data Fit"
@@ -367,7 +370,7 @@ def figure3_b(nodeType="NN"):
         plt.errorbar(xs, my_dks, yerr=my_errs, capsize=2, label="1.5D Fit", fmt='.:')
         plt.errorbar(xs, N_dks, yerr=N_errs, capsize=2, label=kF + " Fit", fmt='.:')
 
-    plt.plot(xs, [8 for _ in xs], label="Resolution")
+    plt.plot(xs, [8 for _ in xs], color="red", label="Resolution")
 
 
     plt.title(title)
@@ -379,8 +382,8 @@ def figure3_b(nodeType="NN"):
     plt.show()
 
 
-def figure4_a():
-    with open('/Users/ianhu/Documents/ARPES/big simulation fit 2.csv', 'r', encoding='UTF8', newline='') as f:
+def figure4a():
+    with open('/Users/ianhu/Documents/ARPES/big simulation fit.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         next(reader)
 
@@ -457,7 +460,7 @@ def figure4_a():
         plt.show()
 
 
-def figure4_b():
+def figure4b(bigGap=False):
     with open('/Users/ianhu/Documents/ARPES/big simulation fit 2.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         next(reader)
@@ -466,10 +469,14 @@ def figure4_b():
         #     tkey = (0, 4.671269902, 0.011)
         # elif set == 2:
         #     tkey = (5.993, 4.671269902, 0.011)
-
-        key1 = (0, 4.671269902, 0.011)
-        key2 = (5.993, 4.671269902, 0.011)
-        key3 = (12, 4.671269902, 0.011)
+        if bigGap:
+            key1 = (12, 2.547965401, 0.001)
+            key2 = (12, 4.671269902, 0.011)
+            key3 = (12, 6.794574402, 0.021)
+        else:
+            key1 = (5.993, 2.547965401, 0.001)
+            key2 = (5.993, 4.671269902, 0.011)
+            key3 = (5.993, 6.794574402, 0.021)
         situations = {key1: [[], []], key2: [[], []], key3: [[], []]}
 
         for i in range(675):
@@ -477,8 +484,8 @@ def figure4_b():
                 file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi= next(reader)[:13]
                 key = (float(true_gap), float(res), float(snr))
                 if key in situations:
-                    situations[key][0].append(float(my_dk)-float(true_gap))
-                    situations[key][1].append(float(N_dk)-float(true_gap))
+                    situations[key][0].append(float(my_dk))
+                    situations[key][1].append(float(N_dk))
             except ValueError:
                 pass
 
@@ -490,28 +497,6 @@ def figure4_b():
     N_data2 = situations[key2][1]
     N_data3 = situations[key3][1]
 
-    print(my_data1)
-    print(my_data2)
-    print(my_data3)
-    print(N_data1)
-    print(N_data2)
-    print(N_data3)
-
-    temp = np.quantile(N_data1, [0.25, 0.75])
-    factor1 = temp[1] - temp[0]
-    temp = np.quantile(N_data2, [0.25, 0.75])
-    factor2 = temp[1] - temp[0]
-    temp = np.quantile(N_data3, [0.25, 0.75])
-    factor3 = temp[1] - temp[0]
-    print(factor1, factor2, factor3)
-
-    my_data1 = [x / factor1 for x in my_data1]
-    my_data2 = [x / factor2 for x in my_data2]
-    my_data3 = [x / factor3 for x in my_data3]
-    N_data1 = [x / factor1 for x in N_data1]
-    N_data2 = [x / factor2 for x in N_data2]
-    N_data3 = [x / factor3 for x in N_data3]
-
     data = [
         my_data1, my_data2, my_data3,
         N_data1, N_data2, N_data3
@@ -522,32 +507,59 @@ def figure4_b():
     bp1 = ax.boxplot(data[:3], positions=np.array(range(3)) * 2.0 - 0.4, widths=0.6,
                      patch_artist=True, boxprops=dict(facecolor="C0"))
     bp2 = ax.boxplot(data[3:], positions=np.array(range(3)) * 2.0 + 0.4, widths=0.6,
-                     patch_artist=True, boxprops=dict(facecolor="C1"))
+                     patch_artist=True, boxprops=dict(facecolor="C2"))
 
     ax.set_xticks([0, 2, 4])
-    ax.set_xticklabels(['Trial 1', 'Trial 2', 'Trial 3'])
-    ax.legend([bp1["boxes"][0], bp2["boxes"][0]], ['Algorithm 1', 'Algorithm 2'])
-    plt.ylim(-1, 1)
+    ax.set_xticklabels(['High Res & Noise', 'Medium Res & Noise', 'Low Res & Noise'])
+    ax.legend([bp1["boxes"][0], bp2["boxes"][0], Line2D([0], [0], color='red')], ['1.5D Fit', kF + ' Fit', 'True Gap'])
+    plt.ylabel("Gap Size (mev)")
+    plt.title("Various Fits for Gap Size " + str(key1[0]) + " mev")
+
+    if bigGap:
+        plt.ylim(11.5, 12.5)
+        plt.plot([-1, 4.8], [12, 12], color="red")
+    else:
+        plt.ylim(-0.5, 8)
+        plt.plot([-1, 4.8], [5.993, 5.993], color="red")
 
     plt.show()
 
 
+def figure_1():
+    figure1ab(False)
+    figure1ab(True)
+    figure1cd(False)
+    figure1cd(True)
+
+
+def figure_2():
+    figure2a()
+    figure2b("SNR")
+    figure2b("dE")
+    figure2b("T")
+    figure2c(1)
+    figure2c(2)
+    figure2c(3)
+    figure2c(4)
+
+
+def figure_3():
+    figure3a("NN")
+    figure3a("FN")
+    figure3a("AN")
+    figure3b("NN")
+    figure3b("FN")
+    figure3b("AN")
+
+
+def figure_4():
+    figure4a()
+    figure4b(False)
+    figure4b(True)
+
+
 def all_figures():
-    figure1_ab(False)
-    figure1_ab(True)
-    figure1_cd(False)
-    figure1_cd(True)
-
-    figure2_a()
-    figure2_b("SNR")
-    figure2_b("dE")
-    figure2_b("T")
-
-    figure3_a("NN")
-    figure3_a("FN")
-    figure3_a("AN")
-    figure3_b("NN")
-    figure3_b("FN")
-    figure3_b("AN")
-
-    figure4_a()
+    figure_1()
+    figure_2()
+    figure_3()
+    figure_4()

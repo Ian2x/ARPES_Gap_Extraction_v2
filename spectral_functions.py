@@ -25,12 +25,17 @@ def u(k, a, c, dk):
     Coherence Factor (relative intensity of BQP bands above EF)
     """
     if dk == 0:
-        if a * k ** 2 + c > 0:
-            return 1
-        elif a * k ** 2 + c < 0:
-            return 0
-        else:
-            return 0.5
+        def f(k2):
+            if a * k2 ** 2 + c > 0:
+                return 1
+            elif a * k2 ** 2 + c < 0:
+                return 0
+            else:
+                return 0.5
+        try:
+            return np.array([f(k3) for k3 in k])
+        except TypeError:
+            return f(k)
     return 0.5 * (1 + e(k, a, c) / E(k, a, c, dk))
 
 
