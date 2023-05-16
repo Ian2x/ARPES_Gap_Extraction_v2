@@ -87,7 +87,7 @@ def figure1ab(gap):
 def figure1cd(offset):
     def gapvtemp(t):
         if t < 20:
-            np.sqrt(100 - (t / 2) ** 2)
+            return np.sqrt(100 - (t / 2) ** 2)
         else:
             return 0
     w = np.arange(-10, 10, 0.1)

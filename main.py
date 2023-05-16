@@ -93,7 +93,7 @@ if __name__ == '__main__':
     """
 
     # run_fit("X20141210_near_node/OD50_0204_nL.dat", FileType.NEAR_NODE)
-    figure_4()
+    figure_1()
     quit()
     # all_figures()
 
