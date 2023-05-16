@@ -15,7 +15,7 @@ class FittingOrder(Enum):
     right_to_left = 2
 
 
-def extract_ac(Z, k, w, energy_conv_sigma, fileType, plot_EDC_fits=False, fittingOrder=FittingOrder.center_out):
+def extract_ac(Z, k, w, energy_conv_sigma, fileType, fittingOrder=FittingOrder.center_out, plot=False):
     """
     Extracts initial a and c dispersion estimates by fitting lorentz curves to the trajectory. NOTE: also modifies k if
     there a k-offset is detected
@@ -24,7 +24,7 @@ def extract_ac(Z, k, w, energy_conv_sigma, fileType, plot_EDC_fits=False, fittin
     :param w:
     :param energy_conv_sigma
     :param fileType:
-    :param plot_EDC_fits:
+    :param plot:
     :param fittingOrder:
     :return: initial_a_estimate, initial_c_estimate, initial_dk_estimate, initial_kf_estimate, new_k
     """
@@ -43,42 +43,41 @@ def extract_ac(Z, k, w, energy_conv_sigma, fileType, plot_EDC_fits=False, fittin
     avgRedchi = 0
     params = None
 
-    stderr_estimate = energy_conv_sigma / np.sqrt(energy_conv_sigma * 2.35482004503 * 2 / (w[0] - w[1]))
+    max_std_err = energy_conv_sigma / 2.35482004503
 
     for i in fitting_range:  # width
         if fittingOrder == FittingOrder.center_out and i == int(z_width / 2) + 1:
             params = None
 
-        loc, loc_std, redchi, params = Fitter.NormanFit(Z, k, w, i, energy_conv_sigma, fileType, params=params,
-                                                        print_results=False,
-                                                        plot_results=plot_EDC_fits and i % int(z_width / 9) == 0)
+        loc, loc_std_err, redchi, params = Fitter.NormanFit(Z, k, w, i, energy_conv_sigma, fileType, params=params,
+                                                            plot=plot and i % int(z_width / 9) == 0)
         avgRedchi += redchi
 
-        # if plot_EDC_fits and i % int(z_width / 9) == 0:
-        #     print(params)
-        # print(params)
+        if plot and i % int(z_width / 9) == 0:
+            print(params)
 
-        if loc_std is None or loc_std > stderr_estimate:
-            loc_std = stderr_estimate
+        if loc_std_err is None or loc_std_err > max_std_err:
+            loc_std_err = max_std_err
         super_state_trajectory[i] = -loc
-        super_state_trajectory_errors[i] = loc_std
+        super_state_trajectory_errors[i] = loc_std_err
 
     # Plot trajectory
-    # im = plt.imshow(Z, cmap=plt.cm.RdBu, aspect='auto', extent=[min(k), max(k), min(w), max(w)])
-    # plt.title(f"Super state trajectory")
-    # plt.colorbar(im)
-    # plt.plot(k, super_state_trajectory, label='trajectory')
-    # plt.ylim([min(w), max(w)])
-    # plt.show()
+    if plot:
+        im = plt.imshow(Z, cmap=plt.cm.RdBu, aspect='auto', extent=[min(k), max(k), min(w), max(w)])
+        plt.title(f"Super state trajectory")
+        plt.colorbar(im)
+        plt.plot(k, super_state_trajectory, label='trajectory')
+        plt.ylim([min(w), max(w)])
+        plt.show()
 
-    # print(energy_conv_sigma)
-    # print(super_state_trajectory)
-    # print(super_state_trajectory_errors)
+        print(energy_conv_sigma)
+        print(super_state_trajectory)
+        print(super_state_trajectory_errors)
 
-    avgRedchi /= z_width
+        avgRedchi /= z_width
 
-    # print(f"Average lorentz+sigmoid EDC redchi (maxWidth): {avgRedchi}")
-    # print("Lorentz fits finished.\n")
+        print(f"Average lorentz+sigmoid EDC redchi (maxWidth): {avgRedchi}")
+        print("Lorentz fits finished.\n")
 
     def trajectory_form(x, a, c, dk, k_error):
         return -((a * (x - k_error) ** 2 + c) ** 2 + dk ** 2) ** 0.5
@@ -113,40 +112,32 @@ def extract_ac(Z, k, w, energy_conv_sigma, fileType, plot_EDC_fits=False, fittin
     max_decrement = energy_conv_sigma
     while start > 0:
         if fileType != FileType.ANTI_NODE:
-            if super_state_trajectory[start - 1] < start_peak - max_decrement and int(z_width / 2) - start > 10 and k[
-                start - 1] < (
-                    -0.85 if fileType == FileType.FAR_OFF_NODE else -1.0) * kf_estimate:
+            if super_state_trajectory[start - 1] < start_peak - max_decrement and k[start - 1] < -0.85 * kf_estimate + k_error:
                 print("WARNING: START BROKE BEFORE KF POINT")
                 break
-            elif k[start - 1] < 1.0 * (-kf_estimate):
+            elif k[start - 1] < -kf_estimate + k_error:  # -0.07: # 1.0 * (-kf_estimate):
                 break
+            start -= 1
+            if super_state_trajectory[start] < -energy_conv_sigma:
+                start_peak = max(super_state_trajectory[start], start_peak)
         else:
-            if super_state_trajectory[start - 1] < start_peak - max_decrement and k[start - 1] < -0.025:
-                print("WARNING: START BROKE BEFORE KF POINT")
+            start -= 1
+            if k[start - 1] < -0.06:
                 break
-            elif k[start - 1] < -0.07:
-                break
-        start -= 1
-        if super_state_trajectory[start] < -energy_conv_sigma:
-            start_peak = max(super_state_trajectory[start], start_peak)
     while end < z_width - 1:
         if fileType != FileType.ANTI_NODE:
-            if super_state_trajectory[end + 1] < end_peak - max_decrement and end - int(z_width / 2) > 10 and k[
-                end + 1] > (
-                    0.85 if fileType == FileType.FAR_OFF_NODE else 1.0) * kf_estimate:
+            if super_state_trajectory[end + 1] < end_peak - max_decrement and k[end + 1] > 0.85 * kf_estimate + k_error:
                 print("WARNING: END BROKE BEFORE KF POINT")
                 break
-            elif k[end + 1] > 1.0 * kf_estimate:
+            elif k[end + 1] > kf_estimate + k_error:  # 0.09:  # 1.0 * kf_estimate:
                 break
+            end += 1
+            if super_state_trajectory[end] < -energy_conv_sigma:
+                end_peak = max(super_state_trajectory[end], end_peak)
         else:
-            if super_state_trajectory[end + 1] < end_peak - max_decrement and k[end + 1] > 0.02:
-                print("WARNING: END BROKE BEFORE KF POINT")
+            end += 1
+            if k[end + 1] > 0.08:
                 break
-            elif k[end + 1] > 0.09:
-                break
-        end += 1
-        if super_state_trajectory[end] < -energy_conv_sigma:
-            end_peak = max(super_state_trajectory[end], end_peak)
 
     fit_function = partial(calculate_residual, k=k[start:end], sst=super_state_trajectory[start:end],
                            sst_error=super_state_trajectory_errors[start:end])
@@ -154,24 +145,25 @@ def extract_ac(Z, k, w, energy_conv_sigma, fileType, plot_EDC_fits=False, fittin
     result = mini.minimize(method='least_squares')
 
     # Plot chosen fit
-    im = plt.imshow(Z[:, start:end], cmap=plt.cm.RdBu, aspect='auto',
-                    extent=[min(k[start:end]), max(k[start:end]), min(w), max(w)])  # drawing the function
-    plt.title(f"From " + str(start) + " to " + str(end))
-    plt.colorbar(im)
-    plt.plot(k[start:end], super_state_trajectory[start:end], label='trajectory')
-    plt.plot(k[start:end],
-             trajectory_form(k[start:end], result.params.get('a').value, result.params.get('c').value,
-                             result.params.get('dk').value, result.params.get('k_error').value),
-             label='trajectory fit')
-    plt.ylim([min(w), max(w)])
-    plt.show()
+    if plot:
+        im = plt.imshow(Z[:, start:end], cmap=plt.cm.RdBu, aspect='auto',
+                        extent=[min(k[start:end]), max(k[start:end]), min(w), max(w)])  # drawing the function
+        plt.title(f"From " + str(start) + " to " + str(end))
+        plt.colorbar(im)
+        plt.plot(k[start:end], super_state_trajectory[start:end], label='trajectory')
+        plt.plot(k[start:end],
+                 trajectory_form(k[start:end], result.params.get('a').value, result.params.get('c').value,
+                                 result.params.get('dk').value, result.params.get('k_error').value),
+                 label='trajectory fit')
+        plt.ylim([min(w), max(w)])
+        plt.show()
+
+        print("\nREP GAP, error, redchi   [start/end: ", start, "/", end, "] out of [0,", z_width - 1, "]")
+        print(np.abs(result.params.get('dk').value), ",", result.params.get('dk').stderr, ",", result.redchi)
 
     # Check not bounded by window
     assert start != 0 or fittingOrder == FittingOrder.left_to_right
     assert end != z_width - 1 or fittingOrder == FittingOrder.right_to_left
-
-    print("\nREP GAP, error, redchi   [start/end: ", start, "/", end, "] out of [0,", z_width - 1, "]")
-    print(np.abs(result.params.get('dk').value), ",", result.params.get('dk').stderr, ",", result.redchi)
 
     return result.params.get('a').value, result.params.get('c').value, (
             -result.params.get('c').value / result.params.get('a').value) ** 0.5, result.params.get(

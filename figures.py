@@ -19,11 +19,11 @@ from spectral_functions import A_BCS
 from statistics import mean, stdev
 from math import log
 
-
 k_str = 'Momentum ($\AA^{-1}$)'
 w_str = 'Energy (mev)'
 kF = '$k_F$'
 eF = '$e_F$'
+
 
 def substitute_zeroes(y, errors):
     for i in range(len(y)):
@@ -40,7 +40,17 @@ def floatify(i):
 
 
 def cap_rss(arr, truth, cap):
-    return mean([((x - truth) ** 2 if np.abs(x-truth) < cap else cap ** 2) for x in arr])
+    return mean([((x - truth) ** 2 if np.abs(x - truth) < cap else cap ** 2) for x in arr])
+
+
+def bounded_rss(arr, truth, min=None, max=None):
+    ret = mean([((x - truth) ** 2) for x in arr])
+    if min is not None and ret < min:
+        return min
+    elif max is not None and ret > max:
+        return max
+    else:
+        return ret
 
 
 def figure1ab(gap):
@@ -75,10 +85,11 @@ def figure1ab(gap):
 
 
 def figure1cd(offset):
-    gapvtemp = lambda t : np.sqrt(100-(t/2) ** 2) if t < 20 else 0
-    # gapvtemp = [12, 11.998, 11.992, 11.976, 11.946, 11.893, 11.807, 11.677, 11.486, 11.486, 11.36, 11.21, 11.031,
-    #             10.817, 10.563, 10.258, 9.891, 9.448, 8.906, 8.233, 7.377, 6.238, 4.573, 0, 0, 0]
-    # print(len(gapvtemp))
+    def gapvtemp(t):
+        if t < 20:
+            np.sqrt(100 - (t / 2) ** 2)
+        else:
+            return 0
     w = np.arange(-10, 10, 0.1)
     kf = 0.4
     c = -1000
@@ -103,7 +114,7 @@ def figure1cd(offset):
         if above_labeled and below_labeled and not dot_labeled:
             dot_label = "peak position"
             dot_labeled = True
-        plt.plot(w[y.argmax()], y[y.argmax()]-0.19 * i, 'ko', label=dot_label)
+        plt.plot(w[y.argmax()], y[y.argmax()] - 0.19 * i, 'ko', label=dot_label)
         if not offset:
             plt.plot(-w[y.argmax()], y[y.argmax()] - 0.19 * i, 'ko')
     plt.title(("Offset " if offset else "") + kF + " EDCs at Various Temperature")
@@ -212,13 +223,15 @@ def figure2a():
                 label = "1.5D fit EDCs"
                 my_labeled = True
 
-        plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(w, *critical_param), w, color=EDC_color, label=label)
+        plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(w, *critical_param), w, color=EDC_color,
+                 label=label)
         # plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(loc, *critical_param), -critical_locs[i], marker='o', markersize=2, color="orange")
         plt.plot(k[ordered_critical_is[i]], -critical_locs[i], 'oy', markersize=2, label=point_label)
 
     # Plot trajectory
     plt.plot(k, trajectory_form(k, result.params.get('a').value, result.params.get('c').value,
-                                result.params.get('dk').value, result.params.get('k_error').value), color="orange", label="1.5D fit trajectory")
+                                result.params.get('dk').value, result.params.get('k_error').value), color="orange",
+             label="1.5D fit trajectory")
 
     # Plot heat map
     plt.title("Norman method vs. Multi-EDC vs. 1.5D fit")
@@ -322,11 +335,12 @@ def figure3a(nodeType="NN"):
     elif nodeType == "AN":
         fileName = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_antinode/OD50_0238_nL.dat"
         data = DataReader(fileName=fileName, plot=False, fileType=FileType.ANTI_NODE)
-        data.getZoomedData(width=118, height=140, x_center=k_as_index(0, data.full_k)+7, y_center=70, plot=False)
+        data.getZoomedData(width=118, height=140, x_center=k_as_index(0, data.full_k) + 7, y_center=70, plot=False)
         plt.title("Anti-Node Spectrum")
 
     im = plt.imshow(data.zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
-                    extent=[min(data.zoomed_k), max(data.zoomed_k), min(data.zoomed_w), max(data.zoomed_w)])  # drawing the function
+                    extent=[min(data.zoomed_k), max(data.zoomed_k), min(data.zoomed_w),
+                            max(data.zoomed_w)])  # drawing the function
     plt.colorbar(im, label="Intensity")
     plt.xlabel(k_str)
     plt.ylabel(w_str)
@@ -356,7 +370,8 @@ def figure3b(nodeType="NN"):
         while row and row[0] != "END":
             row = row[:12]
 
-            file, x, my_dk, my_err, my_redchi, e_a, e_c, e_kf, e_k_err, N_dk, N_err, N_redchi = [floatify(i) for i in row]
+            file, x, my_dk, my_err, my_redchi, e_a, e_c, e_kf, e_k_err, N_dk, N_err, N_redchi = [floatify(i) for i in
+                                                                                                 row]
             xs.append(x)
             my_dks.append(my_dk)
             my_errs.append(my_err)
@@ -372,7 +387,6 @@ def figure3b(nodeType="NN"):
 
     plt.plot(xs, [8 for _ in xs], color="red", label="Resolution")
 
-
     plt.title(title)
     plt.xlabel("Temperature (K)")
     plt.ylabel("Gap Size (mev)")
@@ -383,7 +397,7 @@ def figure3b(nodeType="NN"):
 
 
 def figure4a():
-    with open('/Users/ianhu/Documents/ARPES/big simulation fit.csv', 'r', encoding='UTF8', newline='') as f:
+    with open('/Users/ianhu/Documents/ARPES/big simulation fit 3.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         next(reader)
 
@@ -391,7 +405,8 @@ def figure4a():
 
         for i in range(675):
             try:
-                file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi= next(reader)[:13]
+                file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi = next(
+                    reader)[:13]
                 key = (float(true_gap), float(res), float(snr))
                 if key not in situations:
                     situations[key] = [[], []]
@@ -427,41 +442,53 @@ def figure4a():
         }
         cmap = LinearSegmentedColormap('mycmap', cdict)
         for key in situations:
-            # print("=======")
-            # print("GAP, RES, SNR", key)
-            # print(mean(situations[key][0]), stdev(situations[key][0]), np.quantile(situations[key][0], [0,0.25,0.5,0.75,1]))
-            # print(mean(situations[key][1]), stdev(situations[key][1]), np.quantile(situations[key][1], [0,0.25,0.5,0.75,1]))
+            print("=======")
+            print("GAP, RES, SNR", key)
+            print(mean(situations[key][0]), stdev(situations[key][0]), np.quantile(situations[key][0], [0,0.25,0.5,0.75,1]))
+            print(mean(situations[key][1]), stdev(situations[key][1]), np.quantile(situations[key][1], [0,0.25,0.5,0.75,1]))
 
-            my_rss = cap_rss(situations[key][0], key[0], key[1])
-            N_rss = cap_rss(situations[key][1], key[0], key[1])
+            # Uncapped rss
+            my_rss = bounded_rss(situations[key][0], key[0], min=0.01)
+            N_rss = bounded_rss(situations[key][1], key[0], min=0.01)
 
-            ratio = (N_rss / my_rss) ** (1 / 3)
+            size = my_rss ** (2/3)
+            # # ratio = (N_rss / my_rss) ** (1 / 3)
+            #
             # print(N_rss / my_rss)
-            c = math.log(N_rss / my_rss) / 14.741206784156217 / 2 + 0.5
-            if c < 0.49:
-                ax.scatter3D(key[0], key[1], key[2], s=[1000 * ratio], color=(0, 0, 0, 0), edgecolors="orange", linestyle=':', linewidth=2)
-            ax.scatter3D(key[0], key[1], key[2], s=[30 * ratio], c=c, cmap=cmap, vmin=0, vmax=1, edgecolors='black')
+            # print("                 " + str(math.log(my_rss)))
+            # print("                 " + str(math.log(N_rss)))
+            # print(1000 * my_rss ** (2/3), 1000 * N_rss ** (2/3))
+            color = math.log(N_rss / my_rss) / 10.780852629365064 / 2 + 0.5
+            print(N_rss / my_rss)
+            ax.scatter3D(key[0], key[1], key[2], s=[1000 * my_rss ** (2/6)], c=color, cmap=cmap, vmin=0, vmax=1, edgecolors='black')
+            ax.scatter3D(key[0], key[1], key[2], s=[1000 * N_rss ** (2/6)], color=(0, 0, 0, 0), edgecolors="black",
+                         linestyle=':', linewidth=2)
+            # if color < 0.49:
+            #     ax.scatter3D(key[0], key[1], key[2], s=[2000 * size], color=(0, 0, 0, 0), edgecolors="orange",
+            #                  linestyle=':', linewidth=2)
+            # ax.scatter3D(key[0], key[1], key[2], s=[2000 * size], c=color, cmap=cmap, vmin=0, vmax=1, edgecolors='black')
 
         ax.set_xlabel("Gap Size")
         ax.set_ylabel("Resolution")
         ax.set_zlabel("Noise to Signal Factor", labelpad=15)
+        ax.set_xticks([0, 6, 12])
+        ax.set_yticks([2.5, 4.7, 6.8])
+        ax.set_zticks([0.001, 0.011, 0.021])
         plt.title("RSS Comparison over Parameter Space")
         ax.view_init(elev=25, azim=-75)
 
-        # leg_colors = [(0, 'red'), (0.5, 'white'), (1, 'green')]
-        # leg_cmap = LinearSegmentedColormap.from_list('mycmap', leg_colors)
         sm = plt.cm.ScalarMappable(cmap=cmap)
         cbar = plt.colorbar(sm, ticks=[0, 0.5, 1])
 
         cbar.ax.tick_params(size=0)
         cbar.ax.set_title("$\dfrac{RSS\:k_F Fit}{RSS\:1.5D fit}$", fontsize=12, pad=15)
-        cbar.ax.set_yticklabels(['2.5e-6', '1', '2.5e6'])
+        cbar.ax.set_yticklabels(['$\dfrac{1}{48000}$', '1', '48000'])
 
         plt.show()
 
 
 def figure4b(bigGap=False):
-    with open('/Users/ianhu/Documents/ARPES/big simulation fit 2.csv', 'r', encoding='UTF8', newline='') as f:
+    with open('/Users/ianhu/Documents/ARPES/big simulation fit 3.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         next(reader)
 
@@ -470,19 +497,20 @@ def figure4b(bigGap=False):
         # elif set == 2:
         #     tkey = (5.993, 4.671269902, 0.011)
         if bigGap:
-            key1 = (12, 2.547965401, 0.001)
-            key2 = (12, 4.671269902, 0.011)
-            key3 = (12, 6.794574402, 0.021)
+            key1 = (12, 2.548, 0.001)
+            key2 = (12, 4.671, 0.011)
+            key3 = (12, 6.795, 0.021)
         else:
-            key1 = (5.993, 2.547965401, 0.001)
-            key2 = (5.993, 4.671269902, 0.011)
-            key3 = (5.993, 6.794574402, 0.021)
+            key1 = (5.993, 2.548, 0.001)
+            key2 = (5.993, 4.671, 0.011)
+            key3 = (5.993, 6.795, 0.021)
         situations = {key1: [[], []], key2: [[], []], key3: [[], []]}
 
         for i in range(675):
             try:
-                file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi= next(reader)[:13]
-                key = (float(true_gap), float(res), float(snr))
+                file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi = next(
+                    reader)[:13]
+                key = (round(float(true_gap), 3), round(float(res), 3), round(float(snr), 3))
                 if key in situations:
                     situations[key][0].append(float(my_dk))
                     situations[key][1].append(float(N_dk))
@@ -510,7 +538,7 @@ def figure4b(bigGap=False):
                      patch_artist=True, boxprops=dict(facecolor="C2"))
 
     ax.set_xticks([0, 2, 4])
-    ax.set_xticklabels(['High Res & Noise', 'Medium Res & Noise', 'Low Res & Noise'])
+    ax.set_xticklabels(['Small Res & Noise', 'Medium Res & Noise', 'Big Res & Noise'])
     ax.legend([bp1["boxes"][0], bp2["boxes"][0], Line2D([0], [0], color='red')], ['1.5D Fit', kF + ' Fit', 'True Gap'])
     plt.ylabel("Gap Size (mev)")
     plt.title("Various Fits for Gap Size " + str(key1[0]) + " mev")

@@ -9,8 +9,7 @@ from extraction_functions import symmetrize_EDC, Norman_EDC_array, Norman_EDC_ar
 
 class Fitter:
     @staticmethod
-    def NormanFit(Z, k, w, k_index, energy_conv_sigma, fileType, params=None, print_results=False, plot_results=False):
-        # w, EDC_slice, _, _, _, _ = EDC_prep(k_index, Z, w, min_fit_count)
+    def NormanFit(Z, k, w, k_index, energy_conv_sigma, fileType, params=None, plot=False):
         EDC_slice = [Z[i][k_index] for i in range(len(w))]
         w, EDC_slice = symmetrize_EDC(w, EDC_slice)
         while w[0] > (35 if fileType == FileType.SIMULATED else (25 if fileType == FileType.ANTI_NODE else 45)):
@@ -21,15 +20,16 @@ class Fitter:
             EDC_slice = EDC_slice[:-1]
         pars = lmfit.Parameters()
         if fileType == FileType.SIMULATED:
-            if params is not None:
-                params[1] = -0.1
+            # if params is not None:
+            #     params[1] = -0.1
+            # params = None
             pars.add('a', value=params[0] if params is not None else 1900, min=0, vary=True)
-            pars.add('b', value=params[1] if params is not None else -24, min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # params[1] if params is not None else -24
+            pars.add('b', value=0 if fileType == FileType.SIMULATED else (params[1] if params is not None else -24), min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # params[1] if params is not None else -24
             pars.add('c', value=params[2] if params is not None else 10, min=0, max=np.inf, vary=True)
             pars.add('s', value=params[3] if params is not None else 600, min=0, max=np.inf, vary=True)
 
             EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma, noConvolute=True)
-            # 0.0006738092174190171 , 567.0421610712921 , 234.59579861113764
+
             def calculate_residual(p):
                 EDC_residual = EDC_func(np.asarray(w), p['a'], p['b'], p['c'], p['s']) - EDC_slice
                 weighted_EDC_residual = EDC_residual / np.sqrt(EDC_slice)
@@ -60,12 +60,11 @@ class Fitter:
             dk = result.params.get('dk').value
             dk_err = result.params.get('dk').stderr
 
-        if print_results:
-            print(lmfit.fit_report(result))
-            print(np.abs(dk), ",", dk_err, ",", result.redchi)
+        if plot:
+            # print(lmfit.fit_report(result))
+            # print(np.abs(dk), ",", dk_err, ",", result.redchi)
 
-        if plot_results:
-            plt.title("Norman fit (k=" + str(k[k_index])+")")
+            plt.title("Norman fit (k=" + str(k[k_index]) + ")")
             plt.plot(w, EDC_slice, label='data')
             plt.plot(w, EDC_func(w, *result.params.values()), label='fit')
             plt.show()
