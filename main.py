@@ -30,7 +30,7 @@ def run_fit(fileName, fileType):
         nextLine = ""
         while not nextLine.startswith("SNR = "):
             nextLine = temp_simulated_data_file.readline()
-        snr = float(nextLine[nextLine.index(" = ") + 3:])
+        nsr = float(nextLine[nextLine.index(" = ") + 3:])
         while not nextLine.startswith("Energy_Resolution = "):
             nextLine = temp_simulated_data_file.readline()
         energy_conv_sigma = 1000 * float(nextLine[nextLine.index(" = ") + 3:nextLine.index(" eV")]) / 2.35482004503
@@ -69,7 +69,7 @@ def run_fit(fileName, fileType):
                                                           params=params)
 
     if data.fileType == FileType.SIMULATED:
-        return true_gap, energy_conv_sigma, snr, my_dk, my_dk_err, my_redchi, a, c, kf, N_dk, N_dk_err, N_redchi
+        return true_gap, energy_conv_sigma, nsr, my_dk, my_dk_err, my_redchi, a, c, kf, N_dk, N_dk_err, N_redchi
     return my_dk, my_dk_err, my_redchi, a, c, kf, k_error, N_dk, N_dk_err, N_redchi
     # print(my_dk, my_dk_err, my_redchi, a, c, kf, k_error, N_dk, N_dk_err, N_redchi, sep=", ")
 
@@ -97,10 +97,10 @@ if __name__ == '__main__':
     quit()
     # all_figures()
 
-    with open('/Users/ianhu/Documents/ARPES/big simulation fit 3.csv', 'a', encoding='UTF8', newline='') as f:
-        writer = csv.writer(f)
+    with open('/Users/ianhu/Documents/ARPES/big simulation fit 4.csv', 'a', encoding='UTF8', newline='') as f:
+        # writer = csv.writer(f)
 
-        # FOR REAL
+        # FOR REAL TODO: Adjust to include temperature? but don't need for big simulation fit
         # writer.writerow(["File", "1.5D fit gap", "error", "redchi", "estimated_a", "estimated_c", "estimated_kf", "estimated_k_error", "Norman gap", "Norman error", "Norman redchi"])
 
         # FOR SIMULATION

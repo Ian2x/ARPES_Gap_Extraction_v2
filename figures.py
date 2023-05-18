@@ -23,6 +23,7 @@ k_str = 'Momentum ($\AA^{-1}$)'
 w_str = 'Energy (mev)'
 kF = '$k_F$'
 eF = '$e_F$'
+TF = '$T_F$'
 
 
 def substitute_zeroes(y, errors):
@@ -30,6 +31,10 @@ def substitute_zeroes(y, errors):
         if (errors[i] is not None and errors[i] > y[i]) or (errors[i] is None and y[i] < 0.1):
             y[i] = 0
             errors[i] = 0
+
+    for i in range(len(y)):
+        if errors[i] is None:
+            errors[i] = float('NaN')
 
 
 def floatify(i):
@@ -54,16 +59,42 @@ def bounded_rss(arr, truth, min=None, max=None):
 
 
 def figure1ab(gap):
-    sim = Simulator(k_step=0.0005, dk=25 if gap else 0, w=np.arange(-80, 80, 1), width=0.03)
+    sim_l = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_l.k = sim_l.k[2:47]
+    Z_l = np.sqrt(np.flip(sim_l.generate_spectra(fermi=False, noise=False), 0))
+    X_l, Y_l = np.meshgrid(sim_l.k, sim_l.w)
 
-    Z = np.sqrt(np.flip(sim.generate_spectra(fermi=False, noise=False), 0))
+    sim_kf = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_kf.k = sim_kf.k[50:51]
+    Z_kf = np.sqrt(np.flip(sim_kf.generate_spectra(fermi=False, noise=False), 0))
+    X_kf, Y_kf = np.meshgrid(sim_kf.k, sim_kf.w)
 
-    fig = plt.figure()
+    sim_m = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_m.k = sim_m.k[54:55]
+    Z_m = np.sqrt(np.flip(sim_m.generate_spectra(fermi=False, noise=False), 0))
+    X_m, Y_m = np.meshgrid(sim_m.k, sim_m.w)
+
+    sim_kfo = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_kfo.k = sim_kfo.k[58:59]
+    Z_kfo = np.sqrt(np.flip(sim_kfo.generate_spectra(fermi=False, noise=False), 0))
+    X_kfo, Y_kfo = np.meshgrid(sim_kfo.k, sim_kfo.w)
+
+    sim_r = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_r.k = sim_r.k[62:99]
+    Z_r = np.sqrt(np.flip(sim_r.generate_spectra(fermi=False, noise=False), 0))
+    X_r, Y_r = np.meshgrid(sim_r.k, sim_r.w)
+
+    fig = plt.figure(figsize=[5.8, 4.8], dpi=300)
     ax = fig.add_subplot(projection='3d')
-    X, Y = np.meshgrid(sim.k, sim.w)
+    ax.computed_zorder = False
 
-    ax.plot_wireframe(X, Y, Z, rstride=0, cstride=5)
-    ax.set_zlim(0, 35)
+    ax.plot_wireframe(X_l, Y_l, Z_l, rstride=0, cstride=4, colors='cornflowerblue')
+    ax.plot_wireframe(X_kf, Y_kf, Z_kf, rstride=0, cstride=4, colors='darkred', label="kf EDC")
+    ax.plot_wireframe(X_m, Y_m, Z_m, rstride=0, cstride=4, colors='cornflowerblue')
+    ax.plot_wireframe(X_kfo, Y_kfo, Z_kfo, rstride=0, cstride=4, colors='darkgreen', label="kf-offset EDC")
+    ax.plot_wireframe(X_r, Y_r, Z_r, rstride=0, cstride=4, colors='cornflowerblue')
+
+    ax.set_zlim(0, 50)
 
     ax.xaxis.set_major_locator(FixedLocator([0.4]))
     ax.xaxis.set_major_formatter(FixedFormatter([kF]))
@@ -75,11 +106,12 @@ def figure1ab(gap):
 
     ax.zaxis.set_major_locator(FixedLocator([]))
     ax.zaxis.set_major_formatter(FixedFormatter([]))
-    ax.set_zlabel('Intensity')
+    ax.set_zlabel('Intensity (counts)')
 
     ax.set_title('Superconducting State Dispersion' if gap else 'Normal State Dispersion')
 
-    ax.view_init(elev=40, azim=-40)
+    ax.view_init(elev=35, azim=-50)
+    ax.legend()
 
     plt.show()
 
@@ -90,38 +122,57 @@ def figure1cd(offset):
             return np.sqrt(100 - (t / 2) ** 2)
         else:
             return 0
+
     w = np.arange(-10, 10, 0.1)
     kf = 0.4
     c = -1000
-    dk = 1
     T = 5
-    plt.figure(figsize=(6.4, 12.8))
+    fig = plt.figure(figsize=[6.8, 12], dpi=300)
+    ax = fig.add_subplot()
     above_labeled = False
     below_labeled = False
     dot_labeled = False
-    for i in np.arange(18, 22, 0.1):
+    for i in np.arange(18.05, 21.95, 0.1):
         y = np.array(2 * A_BCS(kf + (0.0008 if offset else 0), w, -c / (kf ** 2), c, gapvtemp(i), T))
         label = None
         if not above_labeled and not np.isclose([gapvtemp(i)], [0]):
-            label = "above " + kF
+            label = "Above " + TF
             above_labeled = True
         elif not below_labeled and np.isclose([gapvtemp(i)], [0]):
-            label = "below " + kF
+            label = "Below " + TF
             below_labeled = True
         plt.plot(w, y - 0.19 * i,
-                 color="green" if np.isclose([gapvtemp(i)], [0]) else ("red" if offset else "blue"), label=label)
+                 color=("lightgreen" if offset else "lightsalmon") if np.isclose([gapvtemp(i)], [0]) else (
+                     "darkgreen" if offset else "darkred"), label=label)
         dot_label = None
         if above_labeled and below_labeled and not dot_labeled:
-            dot_label = "peak position"
+            dot_label = "Peak position"
             dot_labeled = True
         plt.plot(w[y.argmax()], y[y.argmax()] - 0.19 * i, 'ko', label=dot_label)
         if not offset:
             plt.plot(-w[y.argmax()], y[y.argmax()] - 0.19 * i, 'ko')
-    plt.title(("Offset " if offset else "") + kF + " EDCs at Various Temperature")
-    plt.ylabel("Temperature")
-    plt.xlabel("Energy")
-    plt.tick_params(labelleft=False, labelbottom=False)
-    plt.legend()
+
+    tf_pos = np.array(2 * A_BCS(kf + (0.0008 if offset else 0), w, -c / (kf ** 2), c, gapvtemp(i), T))[0] - 3.8
+
+    ax.set_xticks([0])
+    ax.set_xticklabels([eF])
+
+    ax.set_yticks([tf_pos])
+    ax.set_yticklabels([TF])
+
+    ax.set_xlabel('Energy (mev)')
+    ax.set_ylabel('Temperature (K)')
+    ax.set_title(("Offset " if offset else "") + kF + " EDCs at Various Temperatures")
+
+    ax.title.set_fontsize(20)
+    ax.xaxis.label.set_fontsize(18)
+    ax.yaxis.label.set_fontsize(18)
+
+    for item in (ax.get_xticklabels() + ax.get_yticklabels()):
+        item.set_fontsize(16)
+
+    ax.legend(loc='upper left', fontsize="16")
+
     plt.show()
 
 
@@ -156,8 +207,8 @@ def figure2a():
         if i == int(z_width / 2) + 1:
             params = None
 
-        loc, loc_std, _, params = Fitter.NormanFit(Z, k, w, i, energy_conv_sigma, fileType, params=params,
-                                                   print_results=False, plot_results=False)
+        loc, loc_std, _, params = Fitter.NormanFit(Z, k, w, i, energy_conv_sigma, fileType, params=params, plot=False,
+                                                   force_b_zero=False)
         super_state_trajectory[i] = -loc
         super_state_trajectory_errors[i] = loc_std
 
@@ -186,6 +237,7 @@ def figure2a():
     result = mini.minimize(method='least_squares')
 
     # Plot EDC fits and locs
+    plt.figure(figsize=[6, 4.8], dpi=300)
     if fileType == FileType.SIMULATED:
         EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma, noConvolute=True)
     else:
@@ -202,36 +254,36 @@ def figure2a():
     norman_labeled = False
     point_labeled = False
     for i, critical_param in reversed(list(enumerate(critical_params))):
-        EDC_color = "black" if ordered_critical_is[i] == kf_i else (
-            "purple" if ordered_critical_is[i] in kf_neighbor_is else "green")
+        EDC_color = "mediumorchid" if ordered_critical_is[i] == kf_i else (
+            "dodgerblue" if ordered_critical_is[i] in kf_neighbor_is else "forestgreen")
 
         label = None
         point_label = None
         if not norman_labeled:
-            if EDC_color == "black":
+            if EDC_color == "mediumorchid":
                 label = "Norman fit"
                 norman_labeled = True
         elif not multi_labeled:
-            if EDC_color == "purple":
+            if EDC_color == "dodgerblue":
                 label = "Multi-EDC fit"
                 multi_labeled = True
         elif not point_labeled:
-            point_label = "EDC gap estimate"
+            point_label = "EDC gap estimates"
             point_labeled = True
         elif not my_labeled:
-            if EDC_color == "green":
-                label = "1.5D fit EDCs"
+            if EDC_color == "forestgreen":
+                label = "Other EDCs"
                 my_labeled = True
 
         plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(w, *critical_param), w, color=EDC_color,
-                 label=label)
-        # plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(loc, *critical_param), -critical_locs[i], marker='o', markersize=2, color="orange")
-        plt.plot(k[ordered_critical_is[i]], -critical_locs[i], 'oy', markersize=2, label=point_label)
+                 label=label, zorder=1)
+        plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(-critical_locs[i], *critical_param),
+                 -critical_locs[i], 'o', color='black', markersize=3, label=point_label, zorder=3)
 
     # Plot trajectory
     plt.plot(k, trajectory_form(k, result.params.get('a').value, result.params.get('c').value,
-                                result.params.get('dk').value, result.params.get('k_error').value), color="orange",
-             label="1.5D fit trajectory")
+                                result.params.get('dk').value, result.params.get('k_error').value), color="darkgoldenrod",
+             label="1.5D fit trajectory", zorder=2)
 
     # Plot heat map
     plt.title("Norman method vs. Multi-EDC vs. 1.5D fit")
@@ -239,7 +291,9 @@ def figure2a():
     plt.colorbar(im, label='Intensity')
 
     # Show plot
-    plt.legend()
+    handles, labels = plt.gca().get_legend_handles_labels()
+    order = [0, 1, 3, 2, 4]
+    plt.legend([handles[idx] for idx in order], [labels[idx] for idx in order])
     plt.xlabel(k_str)
     plt.ylabel(w_str)
     plt.show()
@@ -272,14 +326,13 @@ def figure2b(fileType="SNR"):
         substitute_zeroes(my_dks, my_errs)
         substitute_zeroes(N_dks, N_errs)
 
-        plt.figure(figsize=(6.4, 4.8), dpi=144)
-        plt.errorbar(xs, my_dks, yerr=my_errs, capsize=2, label="1.5D Fit", fmt='.:')
-        plt.errorbar(xs, N_dks, yerr=N_errs, capsize=2, label=kF + " Fit", fmt='.:')
-        plt.plot(xs, true_gaps, label="True Gap")
+        plt.figure(figsize=(6.4, 4.8), dpi=300)
 
         if fileType == "SNR":
             title = kF + " Fit vs. 1.5D Fit Across Noise"
-            xlabel = "Noise to signal factor"
+            xlabel = "log(SNR)"
+            xs = [np.log(1 / x ** 2) for x in xs]
+            plt.xlim(xs[-1], xs[1])
         elif fileType == "dE":
             title = kF + " vs. 1.5D Fit Across Energy Resolution"
             xlabel = "Energy Resolution (mev)"
@@ -288,6 +341,10 @@ def figure2b(fileType="SNR"):
             title = kF + " vs. 1.5D Fit Across Temperature"
             xlabel = "Temperature (K)"
             plt.ylim(0, 15)
+
+        plt.errorbar(xs, my_dks, yerr=my_errs, capsize=2, label="1.5D Fit", fmt='.:')
+        plt.errorbar(xs, N_dks, yerr=N_errs, capsize=2, label=kF + " Fit", fmt='.:')
+        plt.plot(xs, true_gaps, label="True Gap")
 
         plt.title(title)
         plt.xlabel(xlabel)
@@ -298,6 +355,8 @@ def figure2b(fileType="SNR"):
 
 def figure2c(step=1):
     sim = Simulator(k_step=0.0005)
+
+    plt.figure(figsize=(6.4, 4.8), dpi=300)
 
     if step == 1:
         Z = sim.generate_spectra(fermi=False, convolute=False, noise=False)
@@ -322,42 +381,43 @@ def figure2c(step=1):
 
 
 def figure3a(nodeType="NN"):
+    plt.figure(figsize=(6.4, 4.8), dpi=300)
+
     if nodeType == "NN":
         fileName = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_near_node/OD50_0233_nL.dat"
         data = DataReader(fileName=fileName, plot=False, fileType=FileType.NEAR_NODE)
         data.getZoomedData(width=50, height=200, x_center=355, y_center=100, plot=False)
-        plt.title("Near-Node Spectrum")
+        plt.title("Near-Node Spectrum (12K)")
     elif nodeType == "FN":
         fileName = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_far_off_node/OD50_0333_nL.dat"
         data = DataReader(fileName=fileName, plot=False, fileType=FileType.FAR_OFF_NODE)
         data.getZoomedData(width=150, height=140, x_center=k_as_index(0, data.full_k), y_center=70, plot=False)
-        plt.title("Far-Node Spectrum")
+        plt.title("Far-Node Spectrum (20.44K)")
     elif nodeType == "AN":
         fileName = r"/Users/ianhu/Documents/ARPES/ARPES Shared Data/X20141210_antinode/OD50_0238_nL.dat"
         data = DataReader(fileName=fileName, plot=False, fileType=FileType.ANTI_NODE)
         data.getZoomedData(width=118, height=140, x_center=k_as_index(0, data.full_k) + 7, y_center=70, plot=False)
-        plt.title("Anti-Node Spectrum")
+        plt.title("Anti-Node Spectrum (14K)")
 
     im = plt.imshow(data.zoomed_Z, cmap=plt.cm.RdBu, aspect='auto',
                     extent=[min(data.zoomed_k), max(data.zoomed_k), min(data.zoomed_w),
                             max(data.zoomed_w)])  # drawing the function
-    plt.colorbar(im, label="Intensity")
+    plt.colorbar(im, label="Intensity (counts)")
     plt.xlabel(k_str)
     plt.ylabel(w_str)
     plt.show()
 
 
 def figure3b(nodeType="NN"):
+    plt.figure(figsize=(6.4, 4.8), dpi=300)
+
     if nodeType == "NN":
-        ft = "Near"
         title = "Near-Node Experimental Data Fit"
     elif nodeType == "FN":
-        ft = "Far Off"
         title = "Far-Node Experimental Data Fit"
     elif nodeType == "AN":
-        ft = "Anti"
         title = "Anti-Node Experimental Data Fit"
-    with open('/Users/ianhu/Documents/ARPES/_ ' + ft + ' Node 4 - Sheet1.csv', 'r', encoding='UTF8', newline='') as f:
+    with open('/Users/ianhu/Documents/ARPES/New' + nodeType + '.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         for i in range(5):
             next(reader)
@@ -405,9 +465,9 @@ def figure4a():
 
         for i in range(675):
             try:
-                file, true_gap, res, snr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi = next(
+                file, true_gap, res, nsr, my_dk, my_err, my_redchi, e_a, e_c, e_kf, N_dk, N_err, N_redchi = next(
                     reader)[:13]
-                key = (float(true_gap), float(res), float(snr))
+                key = (float(true_gap), float(res), float(nsr))
                 if key not in situations:
                     situations[key] = [[], []]
                 situations[key][0].append(float(my_dk))
@@ -415,7 +475,7 @@ def figure4a():
             except ValueError:
                 pass
 
-        fig = plt.figure(figsize=(12.8, 9.6), dpi=144)
+        fig = plt.figure(figsize=(12.8, 9.6), dpi=300)
         ax = fig.add_subplot(projection='3d')
         cdict = {
             'red': (
@@ -443,46 +503,44 @@ def figure4a():
         cmap = LinearSegmentedColormap('mycmap', cdict)
         for key in situations:
             print("=======")
-            print("GAP, RES, SNR", key)
-            print(mean(situations[key][0]), stdev(situations[key][0]), np.quantile(situations[key][0], [0,0.25,0.5,0.75,1]))
-            print(mean(situations[key][1]), stdev(situations[key][1]), np.quantile(situations[key][1], [0,0.25,0.5,0.75,1]))
+            print("GAP, RES, NSR", key)
+            print(mean(situations[key][0]), stdev(situations[key][0]))
+            print(mean(situations[key][1]), stdev(situations[key][1]))
 
             # Uncapped rss
-            my_rss = bounded_rss(situations[key][0], key[0], min=0.01)
-            N_rss = bounded_rss(situations[key][1], key[0], min=0.01)
+            my_rss = bounded_rss(situations[key][0], key[0])
+            N_rss = bounded_rss(situations[key][1], key[0])
+            print("VALUE", math.log(N_rss / my_rss))
 
-            size = my_rss ** (2/3)
-            # # ratio = (N_rss / my_rss) ** (1 / 3)
-            #
-            # print(N_rss / my_rss)
-            # print("                 " + str(math.log(my_rss)))
-            # print("                 " + str(math.log(N_rss)))
-            # print(1000 * my_rss ** (2/3), 1000 * N_rss ** (2/3))
-            color = math.log(N_rss / my_rss) / 10.780852629365064 / 2 + 0.5
-            print(N_rss / my_rss)
-            ax.scatter3D(key[0], key[1], key[2], s=[1000 * my_rss ** (2/6)], c=color, cmap=cmap, vmin=0, vmax=1, edgecolors='black')
-            ax.scatter3D(key[0], key[1], key[2], s=[1000 * N_rss ** (2/6)], color=(0, 0, 0, 0), edgecolors="black",
-                         linestyle=':', linewidth=2)
-            # if color < 0.49:
-            #     ax.scatter3D(key[0], key[1], key[2], s=[2000 * size], color=(0, 0, 0, 0), edgecolors="orange",
-            #                  linestyle=':', linewidth=2)
-            # ax.scatter3D(key[0], key[1], key[2], s=[2000 * size], c=color, cmap=cmap, vmin=0, vmax=1, edgecolors='black')
+
+            color = math.log(N_rss / my_rss) / 19.626369597354284 / 2 + 0.5
+            print(my_rss)
+            ax.scatter3D(key[0], key[1], 0.022 - key[2], s=[2000 * my_rss ** (2 / 6)], c=color, cmap=cmap, vmin=0, vmax=1,
+                         edgecolors='black')
 
         ax.set_xlabel("Gap Size")
         ax.set_ylabel("Resolution")
-        ax.set_zlabel("Noise to Signal Factor", labelpad=15)
+        ax.set_zlabel("log(SNR)", labelpad=15)
         ax.set_xticks([0, 6, 12])
         ax.set_yticks([2.5, 4.7, 6.8])
-        ax.set_zticks([0.001, 0.011, 0.021])
+        ax.set_zticks([0.022 - 0.001, 0.022 - 0.011, 0.022 - 0.021])
+        ax.set_zticklabels(np.round(np.log([1 / 0.001 ** 2, 1 / 0.011 ** 2, 1 / 0.021 ** 2]), 1))
         plt.title("RSS Comparison over Parameter Space")
         ax.view_init(elev=25, azim=-75)
 
         sm = plt.cm.ScalarMappable(cmap=cmap)
-        cbar = plt.colorbar(sm, ticks=[0, 0.5, 1])
+        cbar = plt.colorbar(sm, ticks=[0, 0.5, 1],)
 
-        cbar.ax.tick_params(size=0)
-        cbar.ax.set_title("$\dfrac{RSS\:k_F Fit}{RSS\:1.5D fit}$", fontsize=12, pad=15)
-        cbar.ax.set_yticklabels(['$\dfrac{1}{48000}$', '1', '48000'])
+        cbar.ax.tick_params(size=0, labelsize=14)
+        cbar.ax.set_title("$log(\dfrac{RSS\:k_F Fit}{RSS\:1.5D fit})$", fontsize=14, pad=15)
+        cbar.ax.set_yticklabels(['-19.6', '1', '19.6'])
+
+        ax.title.set_fontsize(18)
+        ax.xaxis.label.set_fontsize(16)
+        ax.yaxis.label.set_fontsize(16)
+        ax.zaxis.label.set_fontsize(16)
+        for item in (ax.get_xticklabels() + ax.get_yticklabels() + ax.get_zticklabels()):
+            item.set_fontsize(14)
 
         plt.show()
 
@@ -530,25 +588,36 @@ def figure4b(bigGap=False):
         N_data1, N_data2, N_data3
     ]
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=[6.4, 4.8], dpi=300)
 
-    bp1 = ax.boxplot(data[:3], positions=np.array(range(3)) * 2.0 - 0.4, widths=0.6,
-                     patch_artist=True, boxprops=dict(facecolor="C0"))
-    bp2 = ax.boxplot(data[3:], positions=np.array(range(3)) * 2.0 + 0.4, widths=0.6,
-                     patch_artist=True, boxprops=dict(facecolor="C2"))
+    bp1 = ax.boxplot(data[:3], positions=np.array(range(3)) * 2.0 - 0.4, widths=0.6, showfliers=False)
+    bp2 = ax.boxplot(data[3:], positions=np.array(range(3)) * 2.0 + 0.4, widths=0.6, showfliers=False)
+
+    for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
+        plt.setp(bp1[element], color="C0")
+        plt.setp(bp2[element], color="C1")
+
+
+    for i, my_data in enumerate(data[:3]):
+        plt.scatter(np.random.normal(i * 2.0 - 0.4, 0.03, len(my_data)), my_data, color='C0', alpha=0.4)
+
+    for i, my_data in enumerate(data[3:]):
+        plt.scatter(np.random.normal(i * 2.0 + 0.4, 0.03, len(my_data)), my_data, color='C1', alpha=0.4)
 
     ax.set_xticks([0, 2, 4])
-    ax.set_xticklabels(['Small Res & Noise', 'Medium Res & Noise', 'Big Res & Noise'])
+    ax.set_xticklabels(['Good res, good SNR', 'Medium res, medium SNR', 'Bad res, bad SNR'])
+    for item in (ax.get_xticklabels()):
+        item.set_fontsize(8)
     ax.legend([bp1["boxes"][0], bp2["boxes"][0], Line2D([0], [0], color='red')], ['1.5D Fit', kF + ' Fit', 'True Gap'])
     plt.ylabel("Gap Size (mev)")
     plt.title("Various Fits for Gap Size " + str(key1[0]) + " mev")
 
     if bigGap:
         plt.ylim(11.5, 12.5)
-        plt.plot([-1, 4.8], [12, 12], color="red")
+        plt.plot([-1, 4.8], [12, 12], color="red", zorder=0.5)
     else:
         plt.ylim(-0.5, 8)
-        plt.plot([-1, 4.8], [5.993, 5.993], color="red")
+        plt.plot([-1, 4.8], [5.993, 5.993], color="red", zorder=0.5)
 
     plt.show()
 

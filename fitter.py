@@ -9,7 +9,7 @@ from extraction_functions import symmetrize_EDC, Norman_EDC_array, Norman_EDC_ar
 
 class Fitter:
     @staticmethod
-    def NormanFit(Z, k, w, k_index, energy_conv_sigma, fileType, params=None, plot=False):
+    def NormanFit(Z, k, w, k_index, energy_conv_sigma, fileType, params=None, plot=False, force_b_zero=True):
         EDC_slice = [Z[i][k_index] for i in range(len(w))]
         w, EDC_slice = symmetrize_EDC(w, EDC_slice)
         while w[0] > (35 if fileType == FileType.SIMULATED else (25 if fileType == FileType.ANTI_NODE else 45)):
@@ -24,7 +24,7 @@ class Fitter:
             #     params[1] = -0.1
             # params = None
             pars.add('a', value=params[0] if params is not None else 1900, min=0, vary=True)
-            pars.add('b', value=0 if fileType == FileType.SIMULATED else (params[1] if params is not None else -24), min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # params[1] if params is not None else -24
+            pars.add('b', value=0 if force_b_zero else (params[1] if params is not None else -24), min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # 0 if params is not None else -24
             pars.add('c', value=params[2] if params is not None else 10, min=0, max=np.inf, vary=True)
             pars.add('s', value=params[3] if params is not None else 600, min=0, max=np.inf, vary=True)
 
