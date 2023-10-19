@@ -24,7 +24,7 @@ def run_fit(fileName, fileType):
         energy_conv_sigma = 8 / 2.35482004503
     elif fileType == FileType.SIMULATED:
         data = DataReader(fileName=fileName, plot=False, fileType=fileType)
-        data.getZoomedData(width=220, height=400, x_center=k_as_index(0, data.full_k), y_center=240, plot=False, scaleup=50)
+        data.getZoomedData(width=180, height=400, x_center=k_as_index(0, data.full_k), y_center=240, plot=False, scaleup=50)
 
         temp_simulated_data_file = open(fileName, "r")
         nextLine = ""
@@ -48,7 +48,7 @@ def run_fit(fileName, fileType):
         data.zoomed_w,
         energy_conv_sigma,
         data.fileType,
-        plot=False,
+        plot=True,
         fittingOrder=FittingOrder.right_to_left if data.fileType == FileType.NEAR_NODE else FittingOrder.center_out,
     )
 
@@ -67,7 +67,6 @@ def run_fit(fileName, fileType):
         (-kf if data.fileType == FileType.NEAR_NODE else kf) + k_error, data.full_k), energy_conv_sigma,
                                                           data.fileType, plot=False,
                                                           params=params)
-
     if data.fileType == FileType.SIMULATED:
         return true_gap, energy_conv_sigma, nsr, my_dk, my_dk_err, my_redchi, a, c, kf, N_dk, N_dk_err, N_redchi
     return my_dk, my_dk_err, my_redchi, a, c, kf, k_error, N_dk, N_dk_err, N_redchi
@@ -93,12 +92,12 @@ if __name__ == '__main__':
     """
 
     # run_fit("X20141210_near_node/OD50_0204_nL.dat", FileType.NEAR_NODE)
-    figure_1()
-    quit()
+    # figure4a()
+    # quit()
     # all_figures()
 
-    with open('/Users/ianhu/Documents/ARPES/big simulation fit 4.csv', 'a', encoding='UTF8', newline='') as f:
-        # writer = csv.writer(f)
+    with open('/Users/ianhu/Documents/ARPES/big simulation fit 5.csv', 'a', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f)
 
         # FOR REAL TODO: Adjust to include temperature? but don't need for big simulation fit
         # writer.writerow(["File", "1.5D fit gap", "error", "redchi", "estimated_a", "estimated_c", "estimated_kf", "estimated_k_error", "Norman gap", "Norman error", "Norman redchi"])
@@ -106,13 +105,14 @@ if __name__ == '__main__':
         # FOR SIMULATION
         # writer.writerow(["File", "True Gap", "Resolution", "SNR", "1.5D fit gap", "error", "redchi", "estimated_a", "estimated_c", "estimated_kf", "Norman gap", "Norman error", "Norman redchi"])
 
-        for i in range(20, 675):
+        # 10 should be detected gap, 1, 110, 191 should be no gap
+        for i in range(1, 2, 1):
             print(i)
             try:
                 fileNum = '{:0>4}'.format(str(i))
                 result = run_fit(fileName="Akw_Simulation_20230205_Fitting/Akw_Tdep_" + fileNum + ".dat", fileType=FileType.SIMULATED)
-                writer.writerow([fileNum] + list(result))
-                # print([fileNum] + list(result))
+                # writer.writerow([fileNum] + list(result))
+                print("true, 1.5, 1.5 err, N, N err:", str(result[0]), str(result[3]), str(result[4]), str(result[9]), str(result[10]), sep='     ')
             except Exception as inst:
-                # print(inst)
-                writer.writerow([])
+                print(inst)
+                # writer.writerow([])

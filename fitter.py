@@ -20,13 +20,20 @@ class Fitter:
             EDC_slice = EDC_slice[:-1]
         pars = lmfit.Parameters()
         if fileType == FileType.SIMULATED:
+
             # if params is not None:
             #     params[1] = -0.1
-            # params = None
+
             pars.add('a', value=params[0] if params is not None else 1900, min=0, vary=True)
-            pars.add('b', value=0 if force_b_zero else (params[1] if params is not None else -24), min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # 0 if params is not None else -24
-            pars.add('c', value=params[2] if params is not None else 10, min=0, max=np.inf, vary=True)
+            pars.add('b', value=0 if force_b_zero else (params[1] if params is not None else -18), min=-50, max=1,
+                     vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # 0 if params is not None else -24
+            pars.add('c', value=params[2] if params is not None else 11, min=0, max=np.inf, vary=True)
             pars.add('s', value=params[3] if params is not None else 600, min=0, max=np.inf, vary=True)
+
+            # pars.add('a', value=params[0] if params is not None else 1900, min=0, vary=True)
+            # pars.add('b', value=0 if force_b_zero else (params[1] if params is not None else -24), min=-50, max=1, vary=True)  # USE 0 GAP IF REDCHI IS NOT MUCH WORSE # 0 if params is not None else -24
+            # pars.add('c', value=params[2] if params is not None else 10, min=0, max=np.inf, vary=True)
+            # pars.add('s', value=params[3] if params is not None else 600, min=0, max=np.inf, vary=True)
 
             EDC_func = partial(Norman_EDC_array2, energy_conv_sigma=energy_conv_sigma, noConvolute=True)
 
@@ -67,6 +74,7 @@ class Fitter:
             plt.title("Norman fit (k=" + str(k[k_index]) + ")")
             plt.plot(w, EDC_slice, label='data')
             plt.plot(w, EDC_func(w, *result.params.values()), label='fit')
+            plt.legend()
             plt.show()
 
         return np.abs(dk), dk_err, result.redchi, list(result.params.values())

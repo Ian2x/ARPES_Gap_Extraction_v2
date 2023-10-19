@@ -60,27 +60,27 @@ def bounded_rss(arr, truth, min=None, max=None):
 
 def figure1ab(gap):
     sim_l = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
-    sim_l.k = sim_l.k[2:47]
+    sim_l.k = sim_l.k[2:39]
     Z_l = np.sqrt(np.flip(sim_l.generate_spectra(fermi=False, noise=False), 0))
     X_l, Y_l = np.meshgrid(sim_l.k, sim_l.w)
+
+    sim_kfo = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_kfo.k = sim_kfo.k[42:43]
+    Z_kfo = np.sqrt(np.flip(sim_kfo.generate_spectra(fermi=False, noise=False), 0))
+    X_kfo, Y_kfo = np.meshgrid(sim_kfo.k, sim_kfo.w)
+
+    sim_m = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
+    sim_m.k = sim_m.k[46:47]
+    Z_m = np.sqrt(np.flip(sim_m.generate_spectra(fermi=False, noise=False), 0))
+    X_m, Y_m = np.meshgrid(sim_m.k, sim_m.w)
 
     sim_kf = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
     sim_kf.k = sim_kf.k[50:51]
     Z_kf = np.sqrt(np.flip(sim_kf.generate_spectra(fermi=False, noise=False), 0))
     X_kf, Y_kf = np.meshgrid(sim_kf.k, sim_kf.w)
 
-    sim_m = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
-    sim_m.k = sim_m.k[54:55]
-    Z_m = np.sqrt(np.flip(sim_m.generate_spectra(fermi=False, noise=False), 0))
-    X_m, Y_m = np.meshgrid(sim_m.k, sim_m.w)
-
-    sim_kfo = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
-    sim_kfo.k = sim_kfo.k[58:59]
-    Z_kfo = np.sqrt(np.flip(sim_kfo.generate_spectra(fermi=False, noise=False), 0))
-    X_kfo, Y_kfo = np.meshgrid(sim_kfo.k, sim_kfo.w)
-
     sim_r = Simulator(k_step=0.0001, dk=10 if gap else 0, w=np.arange(-30, 30, 0.5), width=0.01)
-    sim_r.k = sim_r.k[62:99]
+    sim_r.k = sim_r.k[54:99]
     Z_r = np.sqrt(np.flip(sim_r.generate_spectra(fermi=False, noise=False), 0))
     X_r, Y_r = np.meshgrid(sim_r.k, sim_r.w)
 
@@ -110,7 +110,7 @@ def figure1ab(gap):
 
     ax.set_title('Superconducting State Dispersion' if gap else 'Normal State Dispersion')
 
-    ax.view_init(elev=35, azim=-50)
+    ax.view_init(elev=45, azim=-30)
     ax.legend()
 
     plt.show()
@@ -133,7 +133,7 @@ def figure1cd(offset):
     below_labeled = False
     dot_labeled = False
     for i in np.arange(18.05, 21.95, 0.1):
-        y = np.array(2 * A_BCS(kf + (0.0008 if offset else 0), w, -c / (kf ** 2), c, gapvtemp(i), T))
+        y = np.array(2 * A_BCS(kf - (0.0008 if offset else 0), w, -c / (kf ** 2), c, gapvtemp(i), T))
         label = None
         if not above_labeled and not np.isclose([gapvtemp(i)], [0]):
             label = "Above " + TF
@@ -171,7 +171,7 @@ def figure1cd(offset):
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(16)
 
-    ax.legend(loc='upper left', fontsize="16")
+    ax.legend(loc='upper right', fontsize="16")
 
     plt.show()
 
@@ -272,7 +272,7 @@ def figure2a():
             point_labeled = True
         elif not my_labeled:
             if EDC_color == "forestgreen":
-                label = "Other EDCs"
+                label = "1.5D fit EDCs"
                 my_labeled = True
 
         plt.plot(k[ordered_critical_is[i]] + scale_factor * EDC_func(w, *critical_param), w, color=EDC_color,
@@ -472,6 +472,10 @@ def figure4a():
                     situations[key] = [[], []]
                 situations[key][0].append(float(my_dk))
                 situations[key][1].append(float(N_dk))
+                if key == (0.0, 6.794574402306892, 0.001):
+                    print(float(my_dk))
+                if key == (0.0, 6.794574402306892, 0.021):
+                    print("             " + str(my_dk))
             except ValueError:
                 pass
 
@@ -545,23 +549,23 @@ def figure4a():
         plt.show()
 
 
-def figure4b(bigGap=False):
+def figure4b(gapIndex=0):
     with open('/Users/ianhu/Documents/ARPES/big simulation fit 3.csv', 'r', encoding='UTF8', newline='') as f:
         reader = csv.reader(f)
         next(reader)
 
-        # if set == 1:
-        #     tkey = (0, 4.671269902, 0.011)
-        # elif set == 2:
-        #     tkey = (5.993, 4.671269902, 0.011)
-        if bigGap:
+        if gapIndex == 0:
             key1 = (12, 2.548, 0.001)
             key2 = (12, 4.671, 0.011)
             key3 = (12, 6.795, 0.021)
-        else:
+        elif gapIndex == 1:
             key1 = (5.993, 2.548, 0.001)
             key2 = (5.993, 4.671, 0.011)
             key3 = (5.993, 6.795, 0.021)
+        else:
+            key1 = (0, 2.548, 0.001)
+            key2 = (0, 4.671, 0.011)
+            key3 = (0, 6.795, 0.021)
         situations = {key1: [[], []], key2: [[], []], key3: [[], []]}
 
         for i in range(675):
@@ -612,12 +616,15 @@ def figure4b(bigGap=False):
     plt.ylabel("Gap Size (mev)")
     plt.title("Various Fits for Gap Size " + str(key1[0]) + " mev")
 
-    if bigGap:
+    if gapIndex == 0:
         plt.ylim(11.5, 12.5)
         plt.plot([-1, 4.8], [12, 12], color="red", zorder=0.5)
-    else:
+    elif gapIndex == 1:
         plt.ylim(-0.5, 8)
         plt.plot([-1, 4.8], [5.993, 5.993], color="red", zorder=0.5)
+    else:
+        plt.ylim(-0.1, 1)
+        plt.plot([-1, 4.8], [0, 0], color="red", zorder=0.5)
 
     plt.show()
 
@@ -651,8 +658,9 @@ def figure_3():
 
 def figure_4():
     figure4a()
-    figure4b(False)
-    figure4b(True)
+    figure4b(0)
+    figure4b(1)
+    figure4b(2)
 
 
 def all_figures():
