@@ -35,7 +35,7 @@ Models for generating simulated spectrum.
 Problems:
 
 1) In stage 1, there are a wide range of viable peak locations, especially when there are overlapping peaks. This means that the starting peak estimate has a big effect on the output. For instance, fitting the EDCs from center-out versus outside-in makes a big difference. This problem can be imagined as each EDC having a range of viable peak locations, but in reality the fit only outputs one point for each EDC. Because each EDC fit also serves as the starting guess for the next EDC fit, this effect compounds. I also tried fitting each EDC independently, but this led to very erratic peak estimates (as the EDCs move further from k=0 and closer to kf). 
- - I tried dealing with the problem by adding more complex ways of choosing the range of EDCs that are used in the stage 2 part of the fit.
+ - I tried dealing with the problem by adding more complex ways of choosing the range of EDCs that are used in the stage 2 part of the fit. However, this only helped a bit, and doesn't really address the fundamental issue above.
 
 
 
