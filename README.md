@@ -34,7 +34,7 @@ Conventional 1D fits have several weaknesses:
 ### Advanced Fitting Methods
 1.5D and 2D fitting methods aim to overcome these weaknesses by using more data from varied momenta, thus improving gap extraction quality.
 
-![Motivation: Conventional Fit Flaws](path/to/motivation_figure.png)
+![temp](https://github.com/Ian2x/ARPES_Gap_Extraction_v2/assets/72709097/9103b065-84bd-4622-b395-f86c37bf8a89)
 
 ## Proof of Concept
 ### Utilizing Multiple EDCs on Simulated Data
