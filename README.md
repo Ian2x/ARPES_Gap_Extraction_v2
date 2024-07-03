@@ -97,7 +97,3 @@ For more detailed information on the methodology and results, please refer to th
 - [Phenomenology of the low-energy spectral function in high-Tc superconductors](http://ex7.iphy.ac.cn/downfile/32_PRB_57_R11093.pdf)
 - [BCS-like Bogoliubov Quasiparticles in High-Tc Superconductors Observed by Angle-Resolved Photoemission Spectroscopy](https://arxiv.org/pdf/cond-mat/0304505.pdf)
 - [Topological superconductors: a review](https://arxiv.org/pdf/1608.03395.pdf)
----
-
-**License:**
-This project is licensed under the MIT License. See the LICENSE file for more details.
