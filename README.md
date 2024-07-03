@@ -51,14 +51,14 @@ We tested three different fit methods on simulated data:
 - **1.5D Fit:** Demonstrated substantial improvement on simulated results, reducing residuals across the parameter space.
 - **2D Fit:** Showed visually better fits with low residuals, but had two local minima for the gap due to being underconstrained.
 
-![Proof of Concept: Simulated Results](path/to/proof_of_concept_figure.png)
+![temp](https://github.com/Ian2x/ARPES_Gap_Extraction_v2/assets/72709097/abfa1ac6-87f3-431b-8da3-a3e12ba81153)
 
 ## Testing on Real Data
 We applied the experimental strategy to real data, showcasing results for:
 - Extracted gaps compared to symmetrized Norman (value + error bar v. temperature)
 - More realistic data simulations to test fits
 
-![Real Data Results](path/to/real_data_results_figure.png)
+![temp](https://github.com/Ian2x/ARPES_Gap_Extraction_v2/assets/72709097/8402e3fa-20a6-49ca-be40-6c57e86287e6)
 
 ## Comparison of Methods
 ### 2D Fit
@@ -73,7 +73,7 @@ We applied the experimental strategy to real data, showcasing results for:
 - **Pros:** Simple, very fast
 - **Cons:** High variance, especially for low resolution data
 
-![Comparison of Methods](path/to/comparison_figure.png)
+![temp](https://github.com/Ian2x/ARPES_Gap_Extraction_v2/assets/72709097/8c5bfb31-ab60-45a3-a434-6a2f0c6806d0)
 
 ## Future Efforts
 ### Improvements
@@ -86,8 +86,6 @@ We applied the experimental strategy to real data, showcasing results for:
 - Improved noise tolerance for more rapid data collection
 - Labeling data for CNNs due to fast processing
 
-![Future Efforts](path/to/future_efforts_figure.png)
-
 ## Conclusion
 The advanced 1.5D and 2D fitting methods present significant improvements over conventional 1D fits, particularly in handling low resolution and noisy data. Future efforts will focus on refining these methods and exploring their broader applications in extracting small energy gaps in superconductors and beyond.
 
@@ -95,31 +93,10 @@ For more detailed information on the methodology and results, please refer to th
 
 ---
 
-**References:**
-- [Phenomenology of the low-energy spectral function in high-Tc superconductors](https://example.com/paper1)
-- [BCS-like Bogoliubov Quasiparticles in High-Tc Superconductors Observed by Angle-Resolved Photoemission Spectroscopy](https://example.com/paper2)
-- [Topological superconductors: a review](https://example.com/paper3)
-
----
-
-**Submission Format:**
-- [AIP Scitation Manuscript Submission](https://aip.scitation.org/rsi/authors/manuscript)
-- [APS RevTeX 4.2 Submission](https://journals.aps.org/edannounce/revtex-4-2-released)
-
-For more information and to access the code, please visit the repository.
-
----
-
-Feel free to reach out with any questions or feedback!
-
-**Authors:**
-- Ian Wang
-- [Collaborators]
-
-**Contact:**
-- Email: [your.email@example.com]
-- GitHub: [github.com/yourusername]
-
+**Primary References:**
+- [Phenomenology of the low-energy spectral function in high-Tc superconductors](http://ex7.iphy.ac.cn/downfile/32_PRB_57_R11093.pdf)
+- [BCS-like Bogoliubov Quasiparticles in High-Tc Superconductors Observed by Angle-Resolved Photoemission Spectroscopy](https://arxiv.org/pdf/cond-mat/0304505.pdf)
+- [Topological superconductors: a review](https://arxiv.org/pdf/1608.03395.pdf)
 ---
 
 **License:**
