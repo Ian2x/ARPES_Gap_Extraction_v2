@@ -97,3 +97,14 @@ For more detailed information on the methodology and results, please refer to th
 - [Phenomenology of the low-energy spectral function in high-Tc superconductors](http://ex7.iphy.ac.cn/downfile/32_PRB_57_R11093.pdf)
 - [BCS-like Bogoliubov Quasiparticles in High-Tc Superconductors Observed by Angle-Resolved Photoemission Spectroscopy](https://arxiv.org/pdf/cond-mat/0304505.pdf)
 - [Topological superconductors: a review](https://arxiv.org/pdf/1608.03395.pdf)
+
+## Running the code
+
+The pipeline is plain Python 3 (NumPy / SciPy / Matplotlib):
+
+```bash
+pip install numpy scipy matplotlib
+python main.py
+```
+
+`main.py` is the entry point. `simulation.py` generates synthetic spectra for the proof-of-concept, `data_reader.py` ingests real ARPES data, and the `extract_*`, `fitter`, and `spectral_functions` modules implement the 1.5D and 2D fitting methods described above.
