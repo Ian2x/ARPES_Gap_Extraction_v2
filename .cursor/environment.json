@@ -1,4 +1,4 @@
 {
   "name": "ARPES Gap Extraction",
-  "install": "pip install --user -r requirements.txt"
+  "install": "python3 -m pip install --user --upgrade pip\npython3 -m pip install --user -r requirements.txt\npython3 -c \"import numpy, scipy, matplotlib, lmfit; print('deps import OK')\""
 }
