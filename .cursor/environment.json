@@ -1,0 +1,4 @@
+{
+  "name": "ARPES Gap Extraction",
+  "install": "pip install --user -r requirements.txt"
+}
